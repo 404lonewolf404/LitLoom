@@ -215,6 +215,13 @@ class LiteratureDeskTests(unittest.TestCase):
         secret_path.write_text("plain-text-secret\n", encoding="utf-8")
         self.assertEqual(app.model_api_key(), "plain-text-secret")
 
+    def test_session_only_key_clears_an_existing_local_secret(self):
+        config = {"provider": "relay", "base_url": "https://relay.example.test/v1", "model": "relay-model", "enabled": True, "api_key": "saved-secret"}
+        app.save_model_settings(config)
+        app.save_model_settings({**config, "api_key": "session-secret", "persist_api_key": False})
+        self.assertFalse(app.local_model_key_path().exists())
+        self.assertEqual(app.model_api_key(), "session-secret")
+
     def test_model_settings_accept_api_url_without_base_url_and_derive_root(self):
         saved = app.save_model_settings({
             "provider": "Relay",

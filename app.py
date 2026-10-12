@@ -313,6 +313,8 @@ def save_model_settings(data: dict) -> dict:
             RUNTIME_MODEL_KEY = supplied
             if data.get("persist_api_key", True) is not False:
                 write_local_model_key(supplied)
+            else:
+                clear_local_model_key()
         elif data.get("clear_api_key"):
             RUNTIME_MODEL_KEY = ""
             clear_local_model_key()
