@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f6">
+  <title>研读 · 研究生论文工作台</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-lockup">
+        <div class="brand-mark"><span>研</span><i></i></div>
+        <div><div class="brand-name">研读 <span>RESEARCH DESK</span></div><div class="brand-sub">研究生论文工作台</div></div>
+      </div>
+      <div class="workspace-label">工作空间</div>
+      <nav class="primary-nav" aria-label="主导航">
+        <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span><span>今日</span><span class="nav-tail">01</span></button>
+        <button class="nav-item" data-view="discover"><span class="nav-icon">⌕</span><span>发现论文</span></button>
+        <button class="nav-item" data-view="library"><span class="nav-icon">▤</span><span>文献库</span><span class="nav-count" id="nav-library-count">0</span></button>
+        <button class="nav-item" data-view="reading"><span class="nav-icon">◫</span><span>阅读台</span></button>
+        <button class="nav-item" data-view="automation"><span class="nav-icon">◷</span><span>自动追踪</span><span class="nav-dot"></span></button>
+        <button class="nav-item" data-view="analytics"><span class="nav-icon">◒</span><span>数据分析</span></button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span><span>系统设置</span></button>
+      </nav>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-heading"><span>我的研究主题</span><button class="plain-icon" id="add-topic-shortcut" title="创建追踪主题">＋</button></div>
+      <div id="sidebar-topics" class="topic-list"><div class="topic-empty">保存一个主题检索<br>自动追踪新论文</div></div>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-bottom">
+        <div class="local-status"><span class="status-led"></span><div><b>本地资料库</b><small>数据保存在此设备</small></div><span class="lock-mark">⌑</span></div>
+        <button class="nav-item nav-utility" id="backup-shortcut"><span class="nav-icon">↥</span><span>备份与迁移</span></button>
+        <div class="profile-row"><div class="avatar">研</div><div><b>我的研究空间</b><small>个人工作区</small></div><span class="profile-more">···</span></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>我的研究空间</span><span class="crumb-sep">/</span><b id="crumb-current">今日</b></div>
+        <div class="top-actions">
+          <label class="global-search"><span>⌕</span><input id="global-search" type="search" placeholder="搜索标题、作者、关键词…"><kbd>⌘ K</kbd></label>
+          <button class="button small model-api-shortcut" type="button" data-action="agent-config" title="打开模型 API 设置">模型 API</button>
+          <button class="icon-button" id="help-button" title="工作台状态">ⓘ</button>
+          <button class="avatar avatar-small" title="个人研究空间">研</button>
+        </div>
+      </header>
+      <div id="global-task-status" class="global-task-status" aria-live="polite"></div>
+      <div class="content-wrap">
+        <div id="app-view" aria-live="polite"></div>
+      </div>
+    </main>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

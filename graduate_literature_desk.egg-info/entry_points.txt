@@ -1,0 +1,2 @@
+[console_scripts]
+literature-desk = app:main

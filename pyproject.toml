@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graduate-literature-desk"
+dynamic = ["version"]
+description = "Local-first, auditable research literature workspace for graduate students"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Graduate Literature Desk contributors"}]
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["pypdf>=5.0"]
+vision = ["PyMuPDF>=1.24"]
+
+[project.scripts]
+literature-desk = "app:main"
+
+[tool.setuptools]
+py-modules = ["app"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "literature_desk.__version__"}
+
+[tool.setuptools.data-files]
+static = ["static/index.html", "static/app.css", "static/app.js"]
+docs = ["README.md", "LICENSE", "ARCHITECTURE.md", "MULTIUSER_PLATFORM_DESIGN.md", "OPERATIONS.md", "PROJECT_SHOWCASE.md", "需求分析.md", "CHANGELOG.md", "SECURITY.md", "openapi.yaml", "ADR.md", "DEVELOPMENT.md", "DEMO_RUNBOOK.md", ".env.example"]
+
+[tool.setuptools.packages.find]
+include = ["literature_desk*"]
+
+[tool.unittest]
+test-directory = "tests"

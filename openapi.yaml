@@ -1,0 +1,466 @@
+openapi: 3.0.3
+info:
+  title: Graduate Literature Desk API
+  version: 0.15.0
+  description: Local-first, auditable API for paper discovery, reading memory, analytics, and OpenAI-compatible model assistance.
+servers:
+  - url: http://127.0.0.1:8765
+paths:
+  /api/state:
+    get:
+      summary: Workspace overview
+      responses:
+        '200': {description: Current counts and recent activity}
+  /api/health:
+    get:
+      summary: Database integrity and scheduler health
+      responses:
+        '200': {description: Ready local service}
+        '503': {description: Database degraded or unavailable}
+  /api/ready:
+    get:
+      summary: Readiness probe for local process managers
+      responses:
+        '200': {description: Ready}
+        '503': {description: Not ready}
+  /api/audit:
+    get:
+      summary: Read secret-free audit events for debugging and metrics
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, maximum: 500, default: 100}}
+        - {name: event_type, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Recent audit events}
+  /api/papers:
+    get:
+      summary: Search the local library
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string}}
+        - {name: topic, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 500, default: 200}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: favorite, in: query, schema: {type: boolean}}
+        - {name: has_reading_card, in: query, schema: {type: boolean}}
+        - {name: sort, in: query, schema: {type: string, enum: [recent, oldest, year_desc, year_asc, title]}}
+      responses:
+        '200': {description: Paper records with source and attachment metadata}
+  /api/library:
+    get:
+      summary: Paginated local library search with topics and total count
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string}}
+        - {name: topic, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: favorite, in: query, schema: {type: boolean}}
+        - {name: has_reading_card, in: query, schema: {type: boolean}}
+        - {name: sort, in: query, schema: {type: string, enum: [recent, oldest, year_desc, year_asc, title]}}
+      responses:
+        '200': {description: Paginated papers, match snippets, topics, and has_more flag}
+  /api/search:
+    get:
+      summary: Search title, metadata, notes, reading cards, and extracted PDF text
+      parameters:
+        - {name: q, in: query, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 200, default: 40}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+      responses:
+        '200': {description: Search results with match_fields and snippets}
+  /api/papers/{paperId}/history:
+    get:
+      summary: Read note and reading-card revisions
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Historical snapshots}
+  /api/papers/{paperId}/history/{revisionId}/restore:
+    post:
+      summary: Restore a historical note or reading-card snapshot
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+        - {name: revisionId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Restored snapshot and new audit revision}
+  /api/maintenance/status:
+    get:
+      summary: Local database, index, storage and orphan-data status
+      responses:
+        '200': {description: Maintenance status}
+  /api/maintenance/rebuild-search-index:
+    post:
+      summary: Rebuild derived full-text search index
+      responses:
+        '200': {description: Rebuild result}
+  /api/settings/backup-policy:
+    get:
+      summary: Read automatic backup policy and status
+      responses:
+        '200': {description: Automatic backup policy, retention, and last error}
+    patch:
+      summary: Update automatic backup policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: {type: boolean}
+                interval_hours: {type: integer, minimum: 1, maximum: 8760}
+                retention: {type: integer, minimum: 1, maximum: 365}
+      responses:
+        '200': {description: Updated policy}
+  /api/sync-jobs:
+    get:
+      summary: Inspect durable synchronization job states
+      responses:
+        '200': {description: Sync jobs and retry metadata}
+    post:
+      summary: Add or conservatively deduplicate a paper
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {$ref: '#/components/schemas/PaperInput'}}
+      responses:
+        '201': {description: New paper}
+        '200': {description: Existing paper with a new source observation}
+  /api/discover:
+    post:
+      summary: Search configured public sources and triage results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, sources]
+              properties:
+                query: {type: string}
+                sources: {type: array, items: {type: string, enum: [arxiv, openalex, crossref, europepmc, semanticscholar, dblp, openreview]}}
+                limit: {type: integer, default: 25}
+                options:
+                  type: object
+                  properties:
+                    author: {type: string}
+                    venue: {type: string}
+                    year_from: {type: integer, minimum: 1800, maximum: 2200}
+                    year_to: {type: integer, minimum: 1800, maximum: 2200}
+                    work_type: {type: string}
+                    sort: {type: string, enum: [relevance, newest, oldest, novelty, foundations]}
+                    search_depth: {type: string, enum: [focused, balanced, deep], default: balanced}
+                    discovery_mode: {type: string, enum: [balanced, latest, foundations, explore], default: balanced}
+                    suppress_seen: {type: boolean, default: false}
+                    include_open_access: {type: boolean, default: false}
+                    exclude_terms: {type: string, description: Comma-separated terms to exclude from title, abstract, authors, and venue}
+                    expand_concepts: {type: boolean, default: true}
+                    expand_relations: {type: boolean, default: false, description: Search around related papers already in the local library}
+                    diversity: {type: boolean, default: true, description: Apply bounded MMR re-ranking to avoid a single sub-area filling the first page}
+                    adaptive_expansion: {type: boolean, default: true, description: Learn additional terminology from read or favorite local papers in explore/latest modes}
+      responses:
+        '200': {description: Results with query plan, concept variants, per-source diagnostics, relevance/novelty tiers, discovery paths, and seen state}
+  /api/discover/plan:
+    post:
+      summary: Preview the explainable query plan without calling external sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, sources]
+              properties:
+                query: {type: string}
+                sources: {type: array, items: {type: string}}
+                options: {type: object}
+      responses:
+        '200': {description: Concepts, research facets, query variants, source roles, and coverage layers}
+  /api/discover/agent-plan:
+    post:
+      summary: Add optional model-assisted query suggestions to the local plan
+      description: Sends only the query and extracted facets to the configured OpenAI-compatible model. Suggestions are bounded and marked for human review; without a model it returns the deterministic plan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, sources]
+              properties:
+                query: {type: string}
+                sources: {type: array, items: {type: string}}
+                options: {type: object}
+      responses:
+        '200': {description: Deterministic plan plus optional reviewed AI expansion lane}
+        '400': {description: Invalid query or source selection}
+        '502': {description: Configured model failed or returned invalid JSON}
+  /api/analytics:
+    get:
+      summary: Compute data-backed product, retrieval-funnel, quality, and optimization metrics
+      responses:
+        '200': {description: KPI, retrieval funnel, source health, topics, feedback, weekly trend, development cycle, prioritized optimization actions, and an explicit data-quality status for historical runs without persisted source details}
+  /api/metrics:
+    get:
+      summary: Read bounded process runtime metrics for local SLO monitoring
+      responses:
+        '200': {description: Request volume, 4xx/5xx rates, p50/p95 latency, and top routes; no request bodies or credentials}
+  /api/diagnostics:
+    get:
+      summary: Read release, connector, data-quality, health, and SLO diagnostics
+      responses:
+        '200': {description: Safe operator snapshot without API keys, notes, request bodies, or PDF contents}
+  /api/briefing:
+    get:
+      summary: Build a local research brief from recent papers, backlog, topics, sources, and recommendations
+      parameters:
+        - {name: days, in: query, schema: {type: integer, minimum: 1, maximum: 90, default: 7}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 20, default: 8}}
+      responses:
+        '200': {description: Reproducible metadata-only research brief; no model or external network call}
+  /api/evaluation:
+    get:
+      summary: Compute transparent ranking quality from explicit user judgments
+      responses:
+        '200': {description: Precision at 5 and 10, judgment coverage, sample status, and per-query breakdown}
+  /api/recommendations:
+    get:
+      summary: Build a local research profile and non-repeating paper queue
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, maximum: 50, default: 12}}
+      responses:
+        '200': {description: Profile terms, topics, feedback count, and ranked recommendations}
+  /api/papers/{paperId}/connections:
+    get:
+      summary: Explain a paper's relationship to saved topics and local library papers
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Topic tiers and related local papers}
+  /api/papers/{paperId}/reading-card:
+    get:
+      summary: Read the structured evidence card for a paper
+      responses:
+        '200': {description: Structured reading fields and completion percentage}
+    put:
+      summary: Save a structured reading card
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {type: object, additionalProperties: {type: string}}}
+      responses:
+        '200': {description: Saved reading card}
+  /api/papers/{paperId}/ai-reading-card:
+    post:
+      summary: Draft a structured reading card from page-level PDF text and visuals
+      description: Requires explicit consent. Extracts text and renders page images when PyMuPDF is available. A vision-capable OpenAI-compatible model can inspect formulas, figures, tables and diagrams. Stores a versioned artifact and automatically fills only empty reading-card fields by default; send apply:false for a review-only draft. Existing human fields are preserved.
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent]
+              properties:
+                consent: {type: boolean, enum: [true]}
+                apply: {type: boolean, default: true, description: Automatically apply only empty fields; set false for draft-only mode}
+                merge_empty: {type: boolean, default: true}
+                template: {type: string, default: fulltext_reading_card}
+                language: {type: string, default: zh-CN}
+      responses:
+        '200': {description: Structured draft, page evidence, input hash, artifact ID and applied reading card when apply is enabled}
+        '400': {description: Consent missing, PDF missing or extraction failed}
+        '502': {description: Model request or structured output failed}
+        '503': {description: Model service is not configured}
+  /api/papers/{paperId}/ai-deep-read:
+    post:
+      summary: Run chunked multimodal graduate-level paper analysis
+      description: Requires explicit consent. Performs page-aware text extraction, optional PDF page rendering and multimodal synthesis; includes formula transcription, figure/table interpretation, page evidence and visual uncertainty. Stores a versioned analysis and does not overwrite notes or the reading card.
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent]
+              properties:
+                consent: {type: boolean, enum: [true]}
+                template: {type: string, default: graduate_deep_read}
+                language: {type: string, default: zh-CN}
+      responses:
+        '200': {description: Structured deep-read analysis with text and visual evidence metadata}
+        '400': {description: Consent missing, PDF missing or extraction failed}
+        '502': {description: Model request or structured output failed}
+        '503': {description: Model service is not configured}
+  /api/papers/{paperId}/visual-pages:
+    get:
+      summary: List locally cached rendered PDF pages for visual inspection
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Rendered page inventory with page numbers, hashes and local image URLs}
+        '404': {description: Paper not found}
+  /api/papers/{paperId}/ai-analysis:
+    get:
+      summary: Read saved full-text AI reading-card drafts and deep reads
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 50, default: 10}}
+      responses:
+        '200': {description: Versioned analyses, provenance and parsed structured results}
+        '404': {description: Paper not found}
+  /api/papers/{paperId}/apply-ai-reading-card:
+    post:
+      summary: Apply a saved AI reading-card draft, preserving non-empty user fields by default
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [artifact_id]
+              properties:
+                artifact_id: {type: string}
+                merge_empty: {type: boolean, default: true}
+      responses:
+        '200': {description: Applied card and new reading-card revision}
+        '404': {description: Analysis not found or belongs to another paper}
+  /api/papers/batch:
+    post:
+      summary: Apply bounded triage updates to up to 500 papers
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {type: object, required: [ids, updates]}}
+      responses:
+        '200': {description: Updated and skipped counts}
+  /api/runs/{runId}:
+    get:
+      summary: Read source-level details for one retrieval run
+      responses:
+        '200': {description: Safe run details with source and query-variant funnel}
+        '404': {description: Run not found}
+  /api/papers/{paperId}/extraction:
+    get:
+      summary: Read page-level PDF extraction status and quality counts
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Derived extraction summary}
+  /api/papers/{paperId}/pages:
+    get:
+      summary: Search extracted PDF text and return page anchors
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+        - {name: q, in: query, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 100, default: 20}}
+      responses:
+        '200': {description: Page snippets and hashes}
+        '400': {description: Missing query or optional PDF dependency}
+  /api/papers/{paperId}/extract:
+    post:
+      summary: Extract local PDF attachments into rebuildable page artifacts
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Extraction counts and quality information}
+        '400': {description: No PDF attachment or invalid PDF}
+  /api/papers/{paperId}/feedback:
+    post:
+      summary: Record global recommendation feedback without changing topic-specific decisions
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: {type: string, enum: [relevant, irrelevant, later]}
+                scope: {type: string, default: global}
+                note: {type: string}
+      responses:
+        '200': {description: Feedback stored for future ranking}
+  /api/settings/model:
+    get:
+      summary: Read OpenAI-compatible model settings without returning a secret
+      description: Configure either a service root (base_url) or a complete generation endpoint (api_url). A complete api_url is used verbatim; the UI supports Chat Completions and Responses without binding to a vendor domain.
+      responses:
+        '200': {description: Provider, base URL, model, temperature, enabled, key presence and non-secret key source}
+    patch:
+      summary: Save OpenAI-compatible model settings
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {$ref: '#/components/schemas/ModelSettings'}}
+      responses:
+        '200': {description: Sanitized saved settings}
+  /api/settings/model/test:
+    post:
+      summary: Test the configured provider through the actual inference endpoint
+      responses:
+        '200': {description: Provider accepted a minimal inference request}
+        '502': {description: Provider unavailable or rejected the key; error includes the endpoint and HTTP status}
+  /api/papers/{paperId}/references/sync:
+    post:
+      summary: Idempotently sync OpenAlex reference identifiers for a DOI paper
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Saved citation observations}
+  /api/papers/{paperId}/expand:
+    post:
+      summary: Expand a seed paper into referenced, citing, and related OpenAlex works
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit: {type: integer, maximum: 60, default: 24}
+      responses:
+        '200': {description: Candidate works and created/duplicate counts}
+        '400': {description: Seed paper lacks DOI or OpenAlex identifier}
+  /api/backup:
+    post:
+      summary: Create a verified SQLite and attachment backup ZIP
+      responses:
+        '200': {description: Backup manifest and download URL}
+components:
+  schemas:
+    PaperInput:
+      type: object
+      required: [title]
+      properties:
+        title: {type: string}
+        authors: {type: string}
+        year: {type: integer}
+        abstract: {type: string}
+        doi: {type: string}
+        arxiv_id: {type: string}
+        topic: {type: string}
+        notes: {type: string}
+    ModelSettings:
+      type: object
+      properties:
+        provider: {type: string}
+        website_url: {type: string, format: uri}
+        base_url: {type: string, format: uri, description: Optional service root; required when api_url is omitted}
+        api_url: {type: string, format: uri, description: Optional complete POST inference endpoint; used verbatim when supplied}
+        protocol: {type: string, enum: [chat_completions, responses], default: chat_completions}
+        model: {type: string}
+        temperature: {type: number, minimum: 0, maximum: 2}
+        api_key: {type: string, writeOnly: true}
+        persist_api_key: {type: boolean, default: true, description: Persist a supplied key in the local secret file}
+        clear_api_key: {type: boolean, default: false, description: Remove the local secret file when api_key is empty}
+        enabled: {type: boolean}

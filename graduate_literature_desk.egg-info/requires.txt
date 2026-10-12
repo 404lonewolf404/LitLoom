@@ -1,0 +1,6 @@
+
+[pdf]
+pypdf>=5.0
+
+[vision]
+PyMuPDF>=1.24
