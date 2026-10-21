@@ -1,0 +1,79 @@
+
+body,dl,
+dd,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+form {
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+}
+
+p:focus,
+span:focus,
+a:focus,
+div:focus {
+  outline: none;
+}
+
+ol,
+ul,
+input,
+button {
+  margin: 0;
+  padding: 0;
+}
+
+ol,
+ul {
+  list-style: none;
+}
+
+body,
+input,
+textarea,
+button {
+  font-family: "microsoft yahei", -apple-system, "PingFang SC", "simsun", Arial,
+sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  word-wrap: break-word;
+}
+
+
+
+a:focus {
+  outline: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus {
+  outline: 0;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+i {
+  font-style: normal;
+}
+
+html {
+  color: #4d4d4d;
+  background: #ebebe8;
+}

@@ -1,0 +1,1 @@
+import{M as e}from"./message-service-b24c7c86.js";const t=e.PAN,s=Object.freeze({SEARCH_FILE:t+".searchFile",CREATE_FILE:t+".createFile",GET_FILE:t+".getFile",GET_TASK:t+".getTask",GET_ABOUT:t+".getAbout"}),r=e.XL_PLAYER,a=Object.freeze({INIT:r+".init"});function E(e){return"xlPlayerLaunchOptions:"+e}export{s as P,a as X,E as x};

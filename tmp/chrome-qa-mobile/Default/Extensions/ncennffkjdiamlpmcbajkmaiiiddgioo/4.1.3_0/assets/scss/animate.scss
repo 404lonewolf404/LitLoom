@@ -1,0 +1,100 @@
+@keyframes shine {
+  0% {
+    opacity: 1;
+    background-position: -100px 0;
+  }
+
+  50%,
+  100% {
+    opacity: 0.5;
+    background-position: 320px 0;
+  }
+}
+
+/* 模态框动画效果 */
+
+/* 1. 滑入/滑出效果 */
+.animation-slide {
+  transform: translateX(100%) translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.animation-slide.modal-wrapper-show {
+  transform: translateX(0) translateY(0);
+}
+
+/* 2. 弹跳效果 */
+.animation-bounce {
+  transform: scale(0.5);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.animation-bounce.modal-wrapper-show {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* 3. 淡入放大效果 */
+.animation-fade {
+  transform: scale(0.9);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.animation-fade.modal-wrapper-show {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* 4. 翻转效果 */
+.animation-flip {
+  transform: perspective(1200px) rotateX(90deg);
+  transform-origin: bottom center;
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animation-flip.modal-wrapper-show {
+  transform: perspective(1200px) rotateX(0);
+  opacity: 1;
+}
+
+/* 5. 震动效果 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animation-shake {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.animation-shake.modal-wrapper-show {
+  opacity: 1;
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* 6. 滑动上升效果 */
+.animation-slideUp {
+  transform: translateY(30px);
+  opacity: 0;
+  transition: all 0.3s ease-out;
+}
+
+.animation-slideUp.modal-wrapper-show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* 加载动画 */
+@keyframes modal-loading {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

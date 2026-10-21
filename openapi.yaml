@@ -1,11 +1,119 @@
 openapi: 3.0.3
 info:
-  title: Graduate Literature Desk API
-  version: 0.15.0
-  description: Local-first, auditable API for paper discovery, reading memory, analytics, and OpenAI-compatible model assistance.
+  title: LitLoom API
+  version: 0.19.0
+  description: Local-first, auditable LitLoom API for paper discovery, reading memory, analytics, and OpenAI-compatible model assistance.
 servers:
   - url: http://127.0.0.1:8765
 paths:
+  /api/auth/status:
+    get:
+      summary: Get local authentication mode and current session
+      responses:
+        '200': {description: Authentication mode, session state, and safe user profile}
+  /api/auth/bootstrap:
+    post:
+      summary: Create the first workspace owner with the one-time local bootstrap token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bootstrap_token, username, password]
+              properties:
+                bootstrap_token: {type: string}
+                username: {type: string, minLength: 3, maxLength: 40}
+                display_name: {type: string, maxLength: 120}
+                password: {type: string, minLength: 12, maxLength: 256}
+      responses:
+        '200': {description: Owner created; session cookies set}
+        '400': {description: Invalid account input}
+        '409': {description: Owner already initialized}
+  /api/auth/login:
+    post:
+      summary: Create a session for an active workspace member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: {type: string}
+                password: {type: string}
+                workspace_id: {type: string, description: Optional workspace membership to select in isolated tenant mode}
+      responses:
+        '200': {description: Session cookies set}
+        '401': {description: Invalid credentials}
+        '429': {description: Login temporarily throttled}
+  /api/auth/logout:
+    post:
+      summary: Revoke the current session
+      responses:
+        '200': {description: Session revoked and cookies cleared}
+        '403': {description: Missing or invalid CSRF token}
+  /api/auth/password:
+    patch:
+      summary: Change the current user's password and rotate sessions
+      responses:
+        '200': {description: Password changed; current session renewed}
+        '400': {description: Current password or new password is invalid}
+  /api/auth/switch-workspace:
+    post:
+      summary: Switch the current member session to another workspace membership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspace_id]
+              properties:
+                workspace_id: {type: string}
+      responses:
+        '200': {description: New workspace-scoped session cookies set}
+        '403': {description: The member is not part of the workspace}
+  /api/workspaces:
+    get:
+      summary: List workspaces visible to the current member
+      responses:
+        '200': {description: Workspace memberships and active workspace}
+    post:
+      summary: Create an isolated workspace (owner/admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, minLength: 2, maxLength: 160}
+      responses:
+        '201': {description: Workspace created and isolated data store initialized}
+        '403': {description: Administrator role required}
+  /api/workspace/members:
+    get:
+      summary: List shared-workspace members (owner/admin)
+      responses:
+        '200': {description: Safe member profiles}
+        '403': {description: Administrator role required}
+    post:
+      summary: Create a shared-workspace member (owner/admin)
+      responses:
+        '201': {description: Member created}
+        '409': {description: Username already exists}
+  /api/workspace/members/{userId}:
+    patch:
+      summary: Change a member's role or active state (owner/admin)
+      parameters:
+        - {name: userId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Member updated}
+        '400': {description: Invalid role transition}
+        '403': {description: Administrator role required}
   /api/state:
     get:
       summary: Workspace overview
@@ -45,6 +153,43 @@ paths:
         - {name: sort, in: query, schema: {type: string, enum: [recent, oldest, year_desc, year_asc, title]}}
       responses:
         '200': {description: Paper records with source and attachment metadata}
+  /api/study-items:
+    get:
+      summary: Search the persistent prereading knowledge notebook
+      parameters:
+        - {name: q, in: query, schema: {type: string, maxLength: 240}}
+        - {name: mastery, in: query, schema: {type: string, enum: [new, learning, mastered]}}
+        - {name: type, in: query, schema: {type: string, enum: [prerequisite, glossary, notation]}}
+        - {name: due, in: query, schema: {type: boolean, default: false, description: Only items whose next review is due}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 300, default: 100}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+      responses:
+        '200': {description: Paginated concepts, terminology, notation, source papers, and learning counts}
+  /api/study-items/{itemId}:
+    patch:
+      summary: Save learner progress, personal notes, or spaced-review rating
+      parameters:
+        - {name: itemId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mastery: {type: string, enum: [new, learning, mastered]}
+                user_note: {type: string, maxLength: 2000}
+                review_rating: {type: string, enum: [again, hard, good, easy], description: Schedules the next local spaced review}
+      responses:
+        '200': {description: Updated study item}
+        '400': {description: Invalid learning state, review rating, or fields}
+        '404': {description: Study item not found}
+    delete:
+      summary: Remove one item from the personal prereading notebook
+      parameters:
+        - {name: itemId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Whether the item was deleted}
   /api/library:
     get:
       summary: Paginated local library search with topics and total count
@@ -128,7 +273,7 @@ paths:
         '200': {description: Existing paper with a new source observation}
   /api/discover:
     post:
-      summary: Search configured public sources and triage results
+      summary: Search configured public sources and return review candidates (ad-hoc searches do not auto-import)
       requestBody:
         required: true
         content:
@@ -138,7 +283,7 @@ paths:
               required: [query, sources]
               properties:
                 query: {type: string}
-                sources: {type: array, items: {type: string, enum: [arxiv, openalex, crossref, europepmc, semanticscholar, dblp, openreview]}}
+                sources: {type: array, items: {type: string, enum: [arxiv, openalex, crossref, europepmc, semanticscholar, dblp, openreview, tavily]}}
                 limit: {type: integer, default: 25}
                 options:
                   type: object
@@ -158,8 +303,130 @@ paths:
                     expand_relations: {type: boolean, default: false, description: Search around related papers already in the local library}
                     diversity: {type: boolean, default: true, description: Apply bounded MMR re-ranking to avoid a single sub-area filling the first page}
                     adaptive_expansion: {type: boolean, default: true, description: Learn additional terminology from read or favorite local papers in explore/latest modes}
+                    ai_screen: {type: boolean, default: true, description: Ask the configured model to screen candidate title/abstract metadata after retrieval; it never imports candidates or sends PDF full text}
+                    review_only: {type: boolean, default: true, description: Keep this user-initiated run in the review queue instead of automatically importing papers}
       responses:
-        '200': {description: Results with query plan, concept variants, per-source diagnostics, relevance/novelty tiers, discovery paths, and seen state}
+        '202': {description: Retrieval job accepted; poll the run results endpoint}
+        '200': {description: Results with query plan, concept variants, per-source diagnostics, relevance/novelty tiers, discovery paths, seen state, and optional AI-screening state}
+  /api/discover/history:
+    get:
+      summary: List durable candidate-search history without replaying external searches
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: q, in: query, schema: {type: string, maxLength: 300, description: Filter history by the stored research question}}
+      responses:
+        '200':
+          description: Paginated candidate-run history, newest first. Reading history never replays an external search.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [history, limit, offset]
+                properties:
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, query, status, candidate_mode, result_count, candidate_count, imported_count, sources, triage, plan]
+                      properties:
+                        id: {type: string}
+                        query: {type: string}
+                        status: {type: string}
+                        candidate_mode: {type: boolean, enum: [true]}
+                        result_count: {type: integer}
+                        candidate_count: {type: integer}
+                        imported_count: {type: integer}
+                        sources: {type: array, items: {type: string}}
+                        triage: {type: object}
+                        plan: {type: object}
+                        summary: {type: object}
+                  limit: {type: integer}
+                  offset: {type: integer}
+  /api/runs/{run_id}/import-candidates:
+    post:
+      summary: Import selected candidates from an ad-hoc discovery run into the library
+      parameters:
+        - {name: run_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [candidate_ids]
+              properties:
+                candidate_ids: {type: array, items: {type: string}}
+      responses:
+        '200': {description: Selected candidates imported and deduplicated}
+  /api/runs/{runId}/results:
+    get:
+      summary: Restore one stored candidate-search result set without contacting external sources
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Run status, durable candidate records, query plan, feedback memory, and triage status}
+        '404': {description: Run not found}
+  /api/runs/{runId}/triage:
+    get:
+      summary: Read the durable AI candidate-screening status for a run
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Queued/running/completed/unavailable/failed triage state and progress}
+        '404': {description: Run not found}
+    post:
+      summary: Start or retry AI metadata screening for candidate papers
+      description: Sends only the research question plus candidate title, abstract, year, venue, authors, and bounded same-intent feedback examples to the configured model. It never sends full text or imports/deletes a paper.
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force: {type: boolean, default: false, description: Re-run completed screening}
+      responses:
+        '202': {description: Screening accepted or already in progress}
+        '400': {description: Run is not a candidate-review run}
+        '404': {description: Run not found}
+  /api/runs/{runId}/candidates/{candidateId}/feedback:
+    post:
+      summary: Record a candidate decision for the same research intent across future searches
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+        - {name: candidateId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: {type: string, enum: [relevant, irrelevant, ignored, new], description: Use new to revoke a previous judgment while retaining an audit-safe tombstone}
+                note: {type: string, maxLength: 500}
+      responses:
+        '200': {description: Updated candidate and same-intent feedback memory}
+        '400': {description: Invalid decision}
+        '404': {description: Candidate does not belong to the run}
+  /api/runs/{runId}/rerun:
+    post:
+      summary: Re-run a historical candidate search as a new review queue
+      description: Reuses the stored query, source selection, and filters, but always creates a new run and never imports candidates automatically.
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ai_screen: {type: boolean, default: true}
+      responses:
+        '202': {description: New candidate-search run accepted}
+        '404': {description: Historical run not found}
   /api/discover/plan:
     post:
       summary: Preview the explainable query plan without calling external sources
@@ -202,9 +469,9 @@ paths:
         '200': {description: KPI, retrieval funnel, source health, topics, feedback, weekly trend, development cycle, prioritized optimization actions, and an explicit data-quality status for historical runs without persisted source details}
   /api/metrics:
     get:
-      summary: Read bounded process runtime metrics for local SLO monitoring
+      summary: Read process and privacy-safe model usage metrics for local SLO monitoring
       responses:
-        '200': {description: Request volume, 4xx/5xx rates, p50/p95 latency, and top routes; no request bodies or credentials}
+        '200': {description: Request volume, 4xx/5xx rates, top routes, and 30-day model calls, errors, latency, provider-reported tokens/cost, and task breakdown; no prompts, outputs, images, paths, or credentials}
   /api/diagnostics:
     get:
       summary: Read release, connector, data-quality, health, and SLO diagnostics
@@ -225,11 +492,27 @@ paths:
         '200': {description: Precision at 5 and 10, judgment coverage, sample status, and per-query breakdown}
   /api/recommendations:
     get:
-      summary: Build a local research profile and non-repeating paper queue
+      summary: Build a research profile using local feedback and hosted OpenAlex/Semantic Scholar recommendations
       parameters:
         - {name: limit, in: query, schema: {type: integer, maximum: 50, default: 12}}
       responses:
-        '200': {description: Profile terms, topics, feedback count, and ranked recommendations}
+        '200': {description: Profile terms, ranked library recommendations, asynchronously refreshed external candidates, and provider status}
+  /api/recommendations/import:
+    post:
+      summary: Save a currently recommended external work to the reading queue after user confirmation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [external_id]
+              properties:
+                external_id: {type: string, example: https://openalex.org/W123456789}
+      responses:
+        '201': {description: Newly added to the reading queue}
+        '200': {description: The paper was already in the library}
+        '404': {description: The recommendation is no longer available}
   /api/papers/{paperId}/connections:
     get:
       summary: Explain a paper's relationship to saved topics and local library papers
@@ -252,8 +535,8 @@ paths:
         '200': {description: Saved reading card}
   /api/papers/{paperId}/ai-reading-card:
     post:
-      summary: Draft a structured reading card from page-level PDF text and visuals
-      description: Requires explicit consent. Extracts text and renders page images when PyMuPDF is available. A vision-capable OpenAI-compatible model can inspect formulas, figures, tables and diagrams. Stores a versioned artifact and automatically fills only empty reading-card fields by default; send apply:false for a review-only draft. Existing human fields are preserved.
+      summary: Draft a structured reading card from page-level PDF text
+      description: Requires explicit consent. Uses extracted PDF text only and does not send page images. Page quotations are verified against local extracted text. Formula, figure, table and diagram interpretation belongs to the deep-read endpoint. Stores a versioned artifact and automatically fills only empty reading-card fields by default; send apply:false for a review-only draft. Existing human fields are preserved.
       parameters:
         - {name: paperId, in: path, required: true, schema: {type: string}}
       requestBody:
@@ -276,8 +559,8 @@ paths:
         '503': {description: Model service is not configured}
   /api/papers/{paperId}/ai-deep-read:
     post:
-      summary: Run chunked multimodal graduate-level paper analysis
-      description: Requires explicit consent. Performs page-aware text extraction, optional PDF page rendering and multimodal synthesis; includes formula transcription, figure/table interpretation, page evidence and visual uncertainty. Stores a versioned analysis and does not overwrite notes or the reading card.
+      summary: Run chunked graduate-level paper analysis
+      description: Requires explicit consent. Performs page-aware text extraction and, by default, optional PDF page rendering for multimodal formula transcription and figure/table interpretation. Set visual_enabled:false to run and test the complete text-evidence path without sending page images. Stores a versioned analysis and does not overwrite notes or the reading card.
       parameters:
         - {name: paperId, in: path, required: true, schema: {type: string}}
       requestBody:
@@ -291,10 +574,71 @@ paths:
                 consent: {type: boolean, enum: [true]}
                 template: {type: string, default: graduate_deep_read}
                 language: {type: string, default: zh-CN}
+                visual_enabled: {type: boolean, default: true, description: Set false to use PDF text only; no page images are sent and visual findings are cleared/marked unverified}
       responses:
         '200': {description: Structured deep-read analysis with text and visual evidence metadata}
         '400': {description: Consent missing, PDF missing or extraction failed}
         '502': {description: Model request or structured output failed}
+        '503': {description: Model service is not configured}
+  /api/papers/{paperId}/ai-prereading-guide:
+    post:
+      summary: Generate and archive an AI paper-preparation guide
+      description: Requires explicit consent and an attached PDF with extractable text. Uses text only, validates page quotations against the local PDF text, stores a reusable artifact, and adds concepts, terminology and notation to the persistent study notebook as an asynchronous job.
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent]
+              properties:
+                consent: {type: boolean, enum: [true]}
+                background: {type: boolean, default: true}
+                template: {type: string, default: paper_prereading_guide}
+                language: {type: string, default: zh-CN}
+      responses:
+        '202': {description: Persistent asynchronous read-preparation job}
+        '400': {description: Consent missing, PDF missing, or no extractable text}
+        '502': {description: Model request or structured output failed}
+        '503': {description: Model service is not configured}
+  /api/papers/{paperId}/reading-segments:
+    get:
+      summary: Read deterministic page-anchored paragraphs and saved explanations
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 3000, default: 2000}}
+      responses:
+        '200': {description: Extracted paragraphs with stable segment keys and persisted annotation state}
+        '404': {description: Paper not found}
+  /api/papers/{paperId}/paragraph-analysis:
+    post:
+      summary: Queue a side-by-side explanation for one source paragraph
+      description: Requires consent. Only the selected paragraph and bounded neighboring context are sent to the model; the explanation is stored against its page and stable segment key.
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent, segment_key, text]
+              properties:
+                background: {type: boolean, default: true}
+                consent: {type: boolean, enum: [true]}
+                segment_key: {type: string}
+                text: {type: string}
+                previous_context: {type: string}
+                next_context: {type: string}
+                language: {type: string, default: zh-CN}
+      responses:
+        '202': {description: Durable asynchronous paragraph explanation job}
+        '200': {description: Reused active job or saved explanation}
+        '400': {description: Consent or PDF text missing}
+        '422': {description: Paragraph no longer matches the extracted source}
         '503': {description: Model service is not configured}
   /api/papers/{paperId}/visual-pages:
     get:
@@ -306,13 +650,57 @@ paths:
         '404': {description: Paper not found}
   /api/papers/{paperId}/ai-analysis:
     get:
-      summary: Read saved full-text AI reading-card drafts and deep reads
+      summary: Read saved full-text AI reading cards, deep reads and prereading guides
       parameters:
         - {name: paperId, in: path, required: true, schema: {type: string}}
         - {name: limit, in: query, schema: {type: integer, maximum: 50, default: 10}}
       responses:
         '200': {description: Versioned analyses, provenance and parsed structured results}
         '404': {description: Paper not found}
+  /api/papers/metadata-draft:
+    post:
+      summary: Queue or run a reviewable paper metadata draft
+      description: With background=true, returns a durable local task immediately. The task continues across page navigation and service restart; results fill only empty form fields. Crossref fields are retained when optional model extraction fails.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: {type: string}
+                doi: {type: string}
+                citation: {type: string, maxLength: 20000}
+                background: {type: boolean, default: true}
+      responses:
+        '200': {description: Existing task or deduplicated result}
+        '202': {description: Persistent metadata-draft task queued}
+        '400': {description: At least one title, DOI or citation field is required}
+  /api/metadata-draft-jobs:
+    get:
+      summary: List recent metadata-draft tasks
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 10}}
+      responses:
+        '200': {description: Recent durable task snapshots without raw citation input}
+  /api/metadata-draft-jobs/{jobId}:
+    get:
+      summary: Read metadata-draft progress and result
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Task status, stage, progress, and normalized result fields}
+        '404': {description: Task not found}
+  /api/metadata-draft-jobs/{jobId}/retry:
+    post:
+      summary: Retry a failed or partial metadata-draft task
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Existing active or terminal result}
+        '202': {description: Retry queued}
+        '404': {description: Task not found}
+        '400': {description: Original task input is unavailable}
   /api/papers/{paperId}/apply-ai-reading-card:
     post:
       summary: Apply a saved AI reading-card draft, preserving non-empty user fields by default
@@ -332,6 +720,15 @@ paths:
         '200': {description: Applied card and new reading-card revision}
         '404': {description: Analysis not found or belongs to another paper}
   /api/papers/batch:
+    delete:
+      summary: Permanently delete selected papers while optionally protecting favorites
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {type: object, required: [ids], properties: {ids: {type: array, items: {type: string}}, protect_favorites: {type: boolean, default: true}}}}
+      responses:
+        "200": {description: Deleted, protected, and skipped counts}
+        "400": {description: Invalid selection}
     post:
       summary: Apply bounded triage updates to up to 500 papers
       requestBody:
@@ -353,6 +750,23 @@ paths:
         - {name: paperId, in: path, required: true, schema: {type: string}}
       responses:
         '200': {description: Derived extraction summary}
+  /api/papers/{paperId}/download-pdf:
+    post:
+      summary: Download the paper's public pdf_url into the managed local attachment store
+      description: Accepts an optional url override. Only PDF content up to 100 MB is stored; repeated downloads are deduplicated by SHA-256.
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: {type: string, format: uri, description: Optional HTTPS PDF URL override}
+      responses:
+        '200': {description: Downloaded or already existing local attachment}
+        '400': {description: Invalid URL, non-PDF content, or size limit exceeded}
+        '404': {description: Paper not found}
   /api/papers/{paperId}/pages:
     get:
       summary: Search extracted PDF text and return page anchors
@@ -360,9 +774,52 @@ paths:
         - {name: paperId, in: path, required: true, schema: {type: string}}
         - {name: q, in: query, required: true, schema: {type: string}}
         - {name: limit, in: query, schema: {type: integer, maximum: 100, default: 20}}
+        - {name: semantic, in: query, schema: {type: boolean, default: false, description: Use semantic and BM25 hybrid retrieval when an index is available}}
       responses:
-        '200': {description: Page snippets and hashes}
+        '200': {description: Page snippets, stable evidence anchors, retrieval mode and optional fallback warning}
         '400': {description: Missing query or optional PDF dependency}
+  /api/papers/{paperId}/semantic-index:
+    get:
+      summary: Read semantic index coverage and durable job status for a paper
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Embedding configuration presence, indexed pages, stale pages and active job}
+        '404': {description: Paper not found}
+    post:
+      summary: Queue or resume page-text embedding for semantic retrieval
+      parameters:
+        - {name: paperId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent]
+              properties:
+                force: {type: boolean, default: false, description: Rebuild even when all current page hashes are indexed}
+                consent: {type: boolean, enum: [true], description: Explicitly authorize sending this paper's extracted text to the configured Embedding service}
+      responses:
+        '202': {description: Durable indexing job queued}
+        '200': {description: Existing task reused or index already current}
+        '400': {description: Missing Embedding model, endpoint or API key}
+        '403': {description: Missing explicit external-processing consent}
+  /api/semantic-index-jobs/{jobId}:
+    get:
+      summary: Read durable semantic index progress
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Job status and page progress}
+        '404': {description: Job not found}
+  /api/semantic-index-jobs/{jobId}/cancel:
+    post:
+      summary: Request cancellation after the current Embedding request
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Updated durable job state}
   /api/papers/{paperId}/extract:
     post:
       summary: Extract local PDF attachments into rebuildable page artifacts
@@ -392,7 +849,7 @@ paths:
   /api/settings/model:
     get:
       summary: Read OpenAI-compatible model settings without returning a secret
-      description: Configure either a service root (base_url) or a complete generation endpoint (api_url). A complete api_url is used verbatim; the UI supports Chat Completions and Responses without binding to a vendor domain.
+      description: Configure either a service root (base_url) or a complete generation endpoint (api_url). Optional Embedding settings use the same key and are called only when building an index or requesting semantic retrieval.
       responses:
         '200': {description: Provider, base URL, model, temperature, enabled, key presence and non-secret key source}
     patch:
@@ -403,6 +860,12 @@ paths:
           application/json: {schema: {$ref: '#/components/schemas/ModelSettings'}}
       responses:
         '200': {description: Sanitized saved settings}
+  /api/settings/model/providers:
+    get:
+      summary: List editable OpenAI-compatible provider presets
+      description: Returns public endpoint defaults and model hints only; no credentials are included.
+      responses:
+        '200': {description: Provider preset catalog}
   /api/settings/model/test:
     post:
       summary: Test the configured provider through the actual inference endpoint
@@ -436,8 +899,140 @@ paths:
       summary: Create a verified SQLite and attachment backup ZIP
       responses:
         '200': {description: Backup manifest and download URL}
+  /api/agent-tools:
+    get:
+      summary: List Agent tools and execution contracts
+      responses:
+        '200': {description: Tool schemas, budgets and autonomy classes. The Agent plan exposes explicit resolve_paper_identity, merge_paper_versions, bounded expand_citations (read-only candidate snapshots), and track_follow_up steps.}
+  /api/agent-tools/browse-web:
+    post:
+      summary: Extract bounded text from public web pages through Tavily
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [urls]
+              properties:
+                urls: {type: array, minItems: 1, maxItems: 3, items: {type: string, format: uri}}
+                max_chars: {type: integer, minimum: 500, maximum: 20000, default: 12000}
+      responses:
+        '200': {description: Extracted page evidence with provider and retrieval timestamp}
+        '400': {description: Invalid URL, missing Tavily configuration, or provider failure}
+  /api/research-goals:
+    get:
+      summary: List long-term research goals
+      responses:
+        '200': {description: Goals with latest run and memory counts}
+    post:
+      summary: Create a long-term research goal
+      responses:
+        '201': {description: Created goal}
+  /api/research-goals/{goalId}/runs:
+    get:
+      summary: List runs for a research goal
+      parameters:
+        - {name: goalId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Persistent Agent run snapshots}
+    post:
+      summary: Create a reviewable Agent run plan
+      parameters:
+        - {name: goalId, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Awaiting-confirmation run with DAG steps}
+  /api/research-goals/{goalId}/papers:
+    get:
+      summary: Read target-level paper memory
+      parameters:
+        - {name: goalId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: First-seen, last-seen, repeat and version information}
+  /api/research-goals/{goalId}/critiques:
+    get:
+      summary: Read persistent Claim critiques
+      parameters:
+        - {name: goalId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Evidence boundaries, counterexamples and open issues}
+  /api/agent-runs/{runId}:
+    get:
+      summary: Read a resumable Agent run with steps, calls and artifacts
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Full run snapshot}
+  /api/agent-runs/{runId}/approve:
+    post:
+      summary: Approve and start an Agent run
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      responses:
+        '202': {description: Run queued for background execution}
+  /api/agent-runs/{runId}/download-fulltext:
+    post:
+      summary: Download selected public PDFs for already imported Agent candidates
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [candidate_ids, confirm]
+              properties:
+                candidate_ids: {type: array, maxItems: 8, items: {type: string}}
+                confirm: {type: boolean, const: true}
+      responses:
+        '200': {description: Download and deduplication results}
+        '400': {description: Invalid selection or unavailable public PDF}
+  /api/agent-runs/{runId}/apply-reading-card:
+    post:
+      summary: Apply a completed Agent reading-card draft to empty fields only
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                paper_id: {type: string}
+                confirm: {type: boolean, const: true}
+      responses:
+        '200': {description: Applied reading card with human fields preserved}
+  /api/agent-runs/{runId}/export-report:
+    post:
+      summary: Export an approved Agent artifact as Markdown
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                content: {type: string}
+                confirm: {type: boolean, const: true}
+      responses:
+        '200': {description: Markdown download}
 components:
   schemas:
+    ErrorResponse:
+      type: object
+      required: [error, error_code, retryable, request_id]
+      properties:
+        error: {type: string, description: Human-readable safe message kept for legacy clients}
+        error_code: {type: string, description: Stable machine-readable error code}
+        retryable: {type: boolean, description: Whether a client may retry after backoff}
+        request_id: {type: string, description: Correlation id from the server log}
+        details: {type: object, additionalProperties: true}
     PaperInput:
       type: object
       required: [title]
@@ -459,6 +1054,11 @@ components:
         api_url: {type: string, format: uri, description: Optional complete POST inference endpoint; used verbatim when supplied}
         protocol: {type: string, enum: [chat_completions, responses], default: chat_completions}
         model: {type: string}
+        fast_model: {type: string, description: Optional task model for search planning, candidate screening and metadata extraction; defaults to model}
+        analysis_model: {type: string, description: Optional task model for paper reading and evidence synthesis; defaults to model}
+        vision_model: {type: string, description: Optional task model for authorized multimodal document analysis; defaults to model}
+        embedding_model: {type: string, description: Optional OpenAI-compatible embedding model ID}
+        embedding_api_url: {type: string, format: uri, description: Optional full Embedding endpoint; omitted endpoint derives from base_url}
         temperature: {type: number, minimum: 0, maximum: 2}
         api_key: {type: string, writeOnly: true}
         persist_api_key: {type: boolean, default: true, description: Persist a supplied key in the local secret file}

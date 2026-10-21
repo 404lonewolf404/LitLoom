@@ -1,0 +1,66 @@
+LitLoom 已启动：http://127.0.0.1:8772
+本地数据目录：C:\Users\lonewolf\Desktop\多模态\研究生论文工作台\data
+{"ts": "2026-10-21T15:01:37+00:00", "level": "info", "request_id": "824c79b2b41f", "client": "127.0.0.1", "duration_ms": 84.77, "message": "\"GET /api/health HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:01:37+00:00", "level": "info", "request_id": "d608b255f091", "client": "127.0.0.1", "duration_ms": 5.11, "message": "\"GET / HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:01:37+00:00", "level": "info", "request_id": "a11efa17446e", "client": "127.0.0.1", "duration_ms": 75.46, "message": "\"GET /api/settings/model HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:52+00:00", "level": "info", "request_id": "8853af65a63c", "client": "127.0.0.1", "duration_ms": 0.92, "message": "\"GET / HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:52+00:00", "level": "info", "request_id": "a50d670f4491", "client": "127.0.0.1", "duration_ms": 4.57, "message": "\"GET /static/app.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:52+00:00", "level": "info", "request_id": "c5bcb5271e05", "client": "127.0.0.1", "duration_ms": 5.0, "message": "\"GET /static/pdf-import.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:52+00:00", "level": "info", "request_id": "aa72d92bb5e4", "client": "127.0.0.1", "duration_ms": 4.51, "message": "\"GET /static/agent-autonomy.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:52+00:00", "level": "info", "request_id": "4a6d96123528", "client": "127.0.0.1", "duration_ms": 4.07, "message": "\"GET /static/study.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:52+00:00", "level": "info", "request_id": "7e6261ee3e58", "client": "127.0.0.1", "duration_ms": 3.75, "message": "\"GET /static/workspace.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:52+00:00", "level": "info", "request_id": "8fd507851c37", "client": "127.0.0.1", "duration_ms": 4.39, "message": "\"GET /static/litloom-wordmark.png HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "988d65d64a96", "client": "127.0.0.1", "duration_ms": 2.26, "message": "\"GET /static/litloom-icon.png HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "3d6b390c6bb7", "client": "127.0.0.1", "duration_ms": 1.45, "message": "\"GET /static/app.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "dd5bf54fa65c", "client": "127.0.0.1", "duration_ms": 1.57, "message": "\"GET /static/js/views.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "7d28098da008", "client": "127.0.0.1", "duration_ms": 1.8, "message": "\"GET /static/js/discovery.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "f6c6e9162cd6", "client": "127.0.0.1", "duration_ms": 2.38, "message": "\"GET /static/js/library.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "cdec1c3ca76d", "client": "127.0.0.1", "duration_ms": 1.63, "message": "\"GET /static/js/reader.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "a160292aec4e", "client": "127.0.0.1", "duration_ms": 2.08, "message": "\"GET /static/js/actions.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "55e00e74144c", "client": "127.0.0.1", "duration_ms": 0.4, "message": "\"GET /api/auth/status HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "35a428922084", "client": "127.0.0.1", "duration_ms": 124.52, "message": "\"GET /api/state HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "f9c03658a507", "client": "127.0.0.1", "duration_ms": 332.89, "message": "\"GET /api/queries HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:53+00:00", "level": "info", "request_id": "113cf7bf086c", "client": "127.0.0.1", "duration_ms": 461.99, "message": "\"GET /api/runs?limit=30 HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:54+00:00", "level": "info", "request_id": "232d81963ba0", "client": "127.0.0.1", "duration_ms": 539.04, "message": "\"GET /api/ai-jobs?limit=30 HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:54+00:00", "level": "info", "request_id": "2de7a969c372", "client": "127.0.0.1", "duration_ms": 659.33, "message": "\"GET /api/sync-jobs?limit=30 HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:54+00:00", "level": "info", "request_id": "f5f18e251dd6", "client": "127.0.0.1", "duration_ms": 618.87, "message": "\"GET /api/settings/model HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:54+00:00", "level": "info", "request_id": "83f49a0a3637", "client": "127.0.0.1", "duration_ms": 822.67, "message": "\"GET /api/library?limit=50 HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:54+00:00", "level": "info", "request_id": "dc3a63b286fe", "client": "127.0.0.1", "duration_ms": 118.89, "message": "\"GET /api/pdf-ingest HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:54+00:00", "level": "info", "request_id": "8d8df44d6f46", "client": "127.0.0.1", "duration_ms": 402.91, "message": "\"GET /api/recommendations?limit=8 HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:55+00:00", "level": "info", "request_id": "69d7dd543232", "client": "127.0.0.1", "duration_ms": 765.57, "message": "\"GET /api/briefing?days=7&limit=5 HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:55+00:00", "level": "info", "request_id": "acb30c986340", "client": "127.0.0.1", "duration_ms": 837.57, "message": "\"GET /api/runs/c1435acd-c909-4d4a-8669-3b371d0906ef HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:55+00:00", "level": "info", "request_id": "3e4eb4b2c84a", "client": "127.0.0.1", "duration_ms": 1161.39, "message": "\"GET /api/runs/c1435acd-c909-4d4a-8669-3b371d0906ef/results HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:02:59+00:00", "level": "info", "request_id": "18d3f87c7387", "client": "127.0.0.1", "duration_ms": 3720.36, "message": "\"GET /api/discover/history?limit=20&offset=0&q= HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:05:59+00:00", "level": "info", "request_id": "c5fc0b4bc2cf", "client": "127.0.0.1", "duration_ms": 64.26, "message": "\"GET /api/settings/model HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "aaf8a7c3dfae", "client": "127.0.0.1", "duration_ms": 0.76, "message": "\"GET / HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "9e7b71399a55", "client": "127.0.0.1", "duration_ms": 3.91, "message": "\"GET /static/app.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "c58f2156e64b", "client": "127.0.0.1", "duration_ms": 3.77, "message": "\"GET /static/pdf-import.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "d79786ba01bd", "client": "127.0.0.1", "duration_ms": 3.31, "message": "\"GET /static/agent-autonomy.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "67d97fab4516", "client": "127.0.0.1", "duration_ms": 2.99, "message": "\"GET /static/study.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "213e70740b06", "client": "127.0.0.1", "duration_ms": 2.74, "message": "\"GET /static/workspace.css HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "1dab8f7c9b7c", "client": "127.0.0.1", "duration_ms": 2.45, "message": "\"GET /static/litloom-wordmark.png HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "529cc82f4254", "client": "127.0.0.1", "duration_ms": 1.89, "message": "\"GET /static/litloom-icon.png HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "2f008d76145f", "client": "127.0.0.1", "duration_ms": 1.93, "message": "\"GET /static/app.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "d5aa88f0aa36", "client": "127.0.0.1", "duration_ms": 1.58, "message": "\"GET /static/js/views.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "aa2623c4c8a0", "client": "127.0.0.1", "duration_ms": 2.21, "message": "\"GET /static/js/reader.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "9cd8a2e9757f", "client": "127.0.0.1", "duration_ms": 3.03, "message": "\"GET /static/js/library.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "d50240f81b3e", "client": "127.0.0.1", "duration_ms": 3.44, "message": "\"GET /static/js/discovery.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "c11ca5765c3e", "client": "127.0.0.1", "duration_ms": 2.08, "message": "\"GET /static/js/actions.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:13:47+00:00", "level": "info", "request_id": "7b94b7e71b23", "client": "127.0.0.1", "duration_ms": 0.32, "message": "\"GET /api/auth/status HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:14:17+00:00", "level": "info", "request_id": "19306f24283b", "client": "127.0.0.1", "duration_ms": 1.55, "message": "\"GET /static/litloom-icon.png HTTP/1.1\" 200 -"}
+{"ts": "2026-10-21T15:16:36+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "eda55d94b95f", "method": "GET", "path": "/api/state", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:16:36+00:00", "level": "info", "request_id": "eda55d94b95f", "client": "127.0.0.1", "duration_ms": 168376.38, "message": "\"GET /api/state HTTP/1.1\" 500 -"}
+{"ts": "2026-10-21T15:18:46+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "22e56e6ba84f", "method": "GET", "path": "/api/library", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:18:46+00:00", "level": "info", "request_id": "22e56e6ba84f", "client": "127.0.0.1", "duration_ms": 298383.61, "message": "\"GET /api/library?limit=50 HTTP/1.1\" 500 -"}
+{"ts": "2026-10-21T15:20:56+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "439c0451d50a", "method": "GET", "path": "/api/queries", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:20:56+00:00", "level": "info", "request_id": "439c0451d50a", "client": "127.0.0.1", "duration_ms": 428386.41, "message": "\"GET /api/queries HTTP/1.1\" 500 -"}
+{"ts": "2026-10-21T15:23:06+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "e33d68994e71", "method": "GET", "path": "/api/runs", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:23:06+00:00", "level": "info", "request_id": "e33d68994e71", "client": "127.0.0.1", "duration_ms": 558383.81, "message": "\"GET /api/runs?limit=30 HTTP/1.1\" 500 -"}
+{"ts": "2026-10-21T15:25:16+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "1c60b9c848d7", "method": "GET", "path": "/api/ai-jobs", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:25:16+00:00", "level": "info", "request_id": "1c60b9c848d7", "client": "127.0.0.1", "duration_ms": 688387.3, "message": "\"GET /api/ai-jobs?limit=30 HTTP/1.1\" 500 -"}
+{"ts": "2026-10-21T15:27:26+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "cf2c449f719a", "method": "GET", "path": "/api/sync-jobs", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:27:26+00:00", "level": "info", "request_id": "cf2c449f719a", "client": "127.0.0.1", "duration_ms": 818389.91, "message": "\"GET /api/sync-jobs?limit=30 HTTP/1.1\" 500 -"}
+{"ts": "2026-10-21T15:29:36+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "37009daaf756", "method": "GET", "path": "/api/settings/model", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:29:36+00:00", "level": "info", "request_id": "37009daaf756", "client": "127.0.0.1", "duration_ms": 918376.04, "message": "\"GET /api/settings/model HTTP/1.1\" 500 -"}
+{"ts": "2026-10-21T15:31:46+00:00", "level": "error", "event": "request.unhandled_error", "request_id": "a74bdc4bc2c1", "method": "GET", "path": "/api/pdf-ingest", "error_type": "ConnectionTimeout"}
+{"ts": "2026-10-21T15:31:46+00:00", "level": "info", "request_id": "a74bdc4bc2c1", "client": "127.0.0.1", "duration_ms": 1048394.7, "message": "\"GET /api/pdf-ingest HTTP/1.1\" 500 -"}

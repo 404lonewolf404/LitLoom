@@ -1,0 +1,47 @@
+{
+   "action": {
+      "default_icon": "assets/icon19_normal.png",
+      "default_popup": "popup.html",
+      "default_title": "迅雷下载支持"
+   },
+   "background": {
+      "service_worker": "service-worker-loader.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "css": [ "assets/content.css", "assets/index-7b959608.css", "assets/content-83bb6db8.css" ],
+      "js": [ "assets/content.js-loader-397dfa72.js" ],
+      "matches": [ "http://*/*", "https://*/*", "ftp://*/*" ],
+      "run_at": "document_start"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+   },
+   "default_locale": "zh_CN",
+   "description": "__MSG_description__",
+   "host_permissions": [ "\u003Call_urls>", "http://*/*", "https://*/*" ],
+   "icons": {
+      "128": "assets/install_logo.png",
+      "16": "assets/menu_logo.png",
+      "48": "assets/extension_logo.png"
+   },
+   "incognito": "split",
+   "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDEa5DG04lhgzzm3gRSXPPOZOv6ZXnzQrBv+rjUE/dL5br9Duh1kbwGQJCO4QMDvD1usf6FoXDsuvZwYzH6lg1pLI7m/wmQC3NQURHQ7J5zAy7VY0F7qSVqclcpRKY2k00vcqxok6lota3Z1QxUVUwWc9VUfr4gRUeQa4KlEsXzGwIDAQAB",
+   "manifest_version": 3,
+   "name": "迅雷下载支持",
+   "optional_permissions": [  ],
+   "options_page": "options.html",
+   "permissions": [ "contextMenus", "cookies", "tabs", "webRequest", "downloads", "nativeMessaging", "storage", "scripting", "notifications" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "4.1.3",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "assets/*", "assets/*/*", "assets/*/*/*", "xl-player.html", "login-success.html", "logout-success.html" ],
+      "use_dynamic_url": false
+   }, {
+      "matches": [ "ftp://*/*", "http://*/*", "https://*/*" ],
+      "resources": [ "assets/runtime-dom.esm-bundler-beca12b0.js", "assets/index-f7a6c63b.js", "assets/index-8340e26a.js", "assets/pino-aef3f866.js", "assets/util-9ee2f234.js", "assets/util-e26c1ce0.js", "assets/chrome-message-a1dcbd16.js", "assets/_plugin-vue_export-helper-85192461.js", "assets/get-dom-caa529e9.js", "assets/index-7f10a347.js", "assets/index-52585ddd.js", "assets/risk-error-6a79c80a.js", "assets/message-service-b24c7c86.js", "assets/messages-94096533.js", "assets/options-tab-2013941f.js", "assets/chrome-api-2bbac261.js", "assets/takeover-settings-38f56d62.js", "assets/messages-82e0e143.js", "assets/extension-storage-720de7b2.js", "assets/content.js-4b73743c.js" ],
+      "use_dynamic_url": false
+   } ]
+}

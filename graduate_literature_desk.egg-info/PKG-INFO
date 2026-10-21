@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
-Name: graduate-literature-desk
+Name: litloom
 Version: 0.15.0
 Summary: Local-first, auditable research literature workspace for graduate students
-Author: Graduate Literature Desk contributors
+Author: LitLoom contributors
 License: MIT
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
@@ -12,7 +12,7 @@ Requires-Dist: pypdf>=5.0; extra == "pdf"
 Provides-Extra: vision
 Requires-Dist: PyMuPDF>=1.24; extra == "vision"
 
-# 研读 · 研究生论文工作台
+# LitLoom · 研究生论文工作台
 
 本项目是一个**本地优先、可持续积累的个人研究文献工作台**。把论文发现、阅读分诊、笔记、证据和来源记录放进同一个可导出/备份的资料库，按多年连续使用设计。平台将重复检索、去重、分页全文查询、阅读历史、自动追踪和运行维护交给系统，研究者保留最终判断权。
 
@@ -30,7 +30,7 @@ python .\app.py
 
 打开控制台显示的本机地址（默认 <http://127.0.0.1:8765>）。应用仅绑定本机回环地址，不会开放给局域网。停止服务按 `Ctrl+C`。也可运行 `.\run.ps1`。
 
-需要作为可安装命令运行时，可在项目目录执行 `python -m pip install -e .`，之后使用 `literature-desk` 启动。PowerShell 启动脚本支持自定义端口和资料目录，示例：`.\run.ps1 -Port 8876 -DataDir D:\ResearchData`。
+需要作为可安装命令运行时，可在项目目录执行 `python -m pip install -e .`，之后使用 `litloom` 启动。PowerShell 启动脚本支持自定义端口和资料目录，示例：`.\run.ps1 -Port 8876 -DataDir D:\ResearchData`。
 
 数据默认保存到项目目录下的 `data/`：SQLite 数据库、PDF 附件和备份都在本地。可在启动前设置 `LITERATURE_DATA_DIR` 改到 OneDrive 外的自选目录，或设置 `LITERATURE_PORT` 更换端口。请勿把 `data/` 加入公开 Git 仓库。
 

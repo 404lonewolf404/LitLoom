@@ -1,0 +1,1 @@
+import"./modulepreload-polyfill-2ad73d06.js";import{c as s,A as t}from"./messages-94096533.js";import{E as a,s as o}from"./extension-storage-720de7b2.js";!async function(){try{const t=s(new a);await t.init()}catch(c){}try{await o(t.SIGN_OUT)}catch(c){}try{window.close()}catch{}}();

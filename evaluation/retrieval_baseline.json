@@ -1,0 +1,20 @@
+[
+  {
+    "id": "food-volume",
+    "query": "food volume estimation with deep learning and attention",
+    "ranked": ["food-volume-direct", "food-portion-adjacent", "generic-depth"],
+    "relevant": ["food-volume-direct", "food-portion-adjacent"]
+  },
+  {
+    "id": "multimodal-safety",
+    "query": "multilingual vision-language instruction following and prompt injection",
+    "ranked": ["vlm-safety-direct", "multilingual-vlm-direct", "generic-vlm"],
+    "relevant": ["vlm-safety-direct", "multilingual-vlm-direct"]
+  },
+  {
+    "id": "evidence-rag",
+    "query": "page grounded retrieval augmented generation for scientific papers",
+    "ranked": ["paper-rag-direct", "bm25-baseline", "generic-chat"],
+    "relevant": ["paper-rag-direct", "bm25-baseline"]
+  }
+]

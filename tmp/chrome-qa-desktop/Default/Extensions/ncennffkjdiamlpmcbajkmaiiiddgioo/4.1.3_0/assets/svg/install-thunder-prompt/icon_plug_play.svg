@@ -1,0 +1,24 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="18" cy="18" r="18" fill="#D9D9D9"/>
+<circle cx="18" cy="18" r="18" fill="url(#paint0_linear_1902_10006)"/>
+<circle cx="18" cy="18" r="18" fill="url(#paint1_radial_1902_10006)" fill-opacity="0.6"/>
+<circle cx="18" cy="18" r="18" fill="url(#paint2_radial_1902_10006)" fill-opacity="0.45"/>
+<circle cx="18" cy="18" r="18" fill="white" fill-opacity="0.1"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M11.25 10.7986C11.0015 10.7986 10.8001 11 10.8001 11.2486V24.7486C10.8001 24.9971 11.0015 25.1985 11.25 25.1985H24.75C24.9985 25.1985 25.2 24.9971 25.2 24.7486V11.2486C25.2 11 24.9985 10.7986 24.75 10.7986H11.25ZM9 11.2486C9 10.0059 10.0074 8.99854 11.25 8.99854H24.75C25.9927 8.99854 27.0001 10.0059 27.0001 11.2486V24.7486C27.0001 25.9912 25.9927 26.9986 24.75 26.9986H11.25C10.0074 26.9986 9 25.9912 9 24.7486V11.2486Z" fill="white" fill-opacity="0.9"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M15.075 13.7129C15.3535 13.5521 15.6966 13.5521 15.975 13.7129L22.05 17.2203C22.3285 17.381 22.5001 17.6782 22.5001 17.9997C22.5001 18.3213 22.3285 18.6184 22.05 18.7792L15.975 22.2865C15.6966 22.4473 15.3535 22.4473 15.075 22.2865C14.7965 22.1258 14.625 21.8286 14.625 21.5071V14.4923C14.625 14.1708 14.7965 13.8736 15.075 13.7129ZM16.4251 16.0512V19.9482L19.8 17.9997L16.4251 16.0512Z" fill="white" fill-opacity="0.9"/>
+<defs>
+<linearGradient id="paint0_linear_1902_10006" x1="10.9688" y1="1.125" x2="25.5937" y2="34.3125" gradientUnits="userSpaceOnUse">
+<stop stop-color="#4797FF"/>
+<stop offset="0.671875" stop-color="#3F85FF"/>
+<stop offset="1" stop-color="#3F85FF"/>
+</linearGradient>
+<radialGradient id="paint1_radial_1902_10006" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(6.1875 4.5) rotate(49.7636) scale(14.3685)">
+<stop stop-color="#62F6FF"/>
+<stop offset="1" stop-color="#55ADFF" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="paint2_radial_1902_10006" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(31.7813 31.7813) rotate(-132.207) scale(16.327)">
+<stop offset="0.150901" stop-color="#BCD4FF"/>
+<stop offset="1" stop-color="#BCD4FF" stop-opacity="0"/>
+</radialGradient>
+</defs>
+</svg>

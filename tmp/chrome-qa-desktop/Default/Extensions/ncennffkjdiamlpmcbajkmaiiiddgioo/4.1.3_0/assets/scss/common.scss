@@ -1,0 +1,16 @@
+/* 设计稿宽度为1080px,根字号为100px */
+
+:root {
+  --psd: 1920;
+  --rfz: 100;
+}
+
+html {
+  font-size: 5.2083vw; // 兼容性
+}
+
+@media screen and (max-width: 1580px) {
+  html {
+    font-size: 100px;
+  }
+}

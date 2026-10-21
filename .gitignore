@@ -10,4 +10,8 @@ data/*
 *.sqlite3-wal
 *.sqlite3-shm
 *.zip
+.env
 !.github/
+/build/
+/dist/
+*.egg-info/

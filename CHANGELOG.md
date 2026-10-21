@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.19.0 - 2026-10-21
+
+- Recorded PostgreSQL as the shared-deployment primary database decision; the current application runtime remains SQLite until the backend, migrations, and PostgreSQL integration suite are complete.
+- Added an optional PostgreSQL dependency extra and a guarded SQLite snapshot inventory/copy utility that refuses non-empty targets, preserves the source, checks copied row counts, and excludes SQLite FTS shadow tables.
+- Added opt-in team login with one-time owner bootstrap, PBKDF2 password storage, server-side expiring sessions, login throttling, CSRF checks, logout, and password rotation.
+- Protected API routes, PDF/page attachments, and backup downloads; added owner/admin member creation, role changes, account suspension, audit attribution, and viewer/reviewer restrictions.
+- Added a login/bootstrap screen and team member controls. Team mode is one shared workspace on the existing loopback-only deployment; it is not cross-tenant isolation or remote multi-user hosting.
+- Added the missing HTTP PATCH handler coverage used by existing settings and library controls.
+- Added Agent input/output contract validation for flat and nested JSON fields, including type checks, required paths, allowed values, and array bounds. Contract failures are recorded on the tool call and use the existing bounded retry path instead of being reported as successful steps.
+- Expanded `AGENT_ECOSYSTEM.md` with scenario-based selection for LlamaIndex, Haystack, DSPy, AutoGen, CrewAI, Temporal, Prefect, Browser Use, OpenHands, Instructor/Outlines, and Apache AGE; these remain optional adapters with evidence, permission, and reproducibility boundaries.
+- Added a dependency-free offline retrieval evaluator with a replaceable JSON label set and Precision@k, Recall@k, and MRR regression metrics.
+- Added an opt-in deterministic canary assignment snapshot to diagnostics for versioned, reversible rollout of future ranking or model-route changes; stable defaults are unchanged.
+
+## 0.18.0 - 2026-10-20
+
+- Added a local spaced-review queue for prereading concepts, terminology, and notation, with again/hard/good/easy ratings and persistent next-review intervals.
+- Added due/overdue counts and an API filter for review items; JSON migration now preserves review schedules and only accepts newer imported review progress.
+- Upgraded the database schema to 18 with additive study-item columns; existing mastery states and notes are preserved.
+
+## 0.17.0 - 2026-10-20
+
+- Added durable daily model-usage rollups and bounded recent call events with task, model, endpoint host, modality, latency, retry count, token usage, provider-reported cost, and failure type.
+- Added OpenAI Chat/Responses usage normalization, including streaming usage events; model prompt/response bodies, images, credentials, and endpoint paths are never stored in telemetry.
+- Extended `/api/metrics` and System Settings with 30-day model call, failure, token, reported-cost coverage, and latency summaries. Costs are shown only when the provider reports them; no price is guessed.
+
+## 0.16.0 - 2026-10-20
+
+- Added optional fast, analysis and vision task-model routing over the configured OpenAI-compatible endpoint and key; empty routes preserve the primary-model behavior.
+- Persisted task model IDs in settings and JSON exports, and included the selected analysis/vision models in full-text artifact identity so model changes cannot reuse mismatched results.
+- Routed search planning, model-led search, candidate screening and metadata extraction to the fast model; full-text reading to the analysis model; multimodal requests to the vision model.
+
+## 0.15.1 - 2026-10-20
+
+- Added optional page-level OpenAI-compatible Embeddings indexing with text-hash invalidation, durable background progress, cancellation, restart recovery, retries by resubmission, and BM25 hybrid ranking with source anchors.
+- Added explicit text-sharing consent for semantic index jobs in the web API and MCP tools; failed/unconfigured semantic search clearly falls back to local BM25.
+- Embedding settings and API endpoints are persisted without exposing the key; JSON migration export includes the non-secret settings, while vector artifacts remain rebuildable derived data.
+
 ## 0.15.0 - 2026-10-12
 
 - AI 阅读卡生成默认自动应用到结构化阅读卡的空白字段，并保留人工字段、历史快照和 `apply:false` 草稿模式。

@@ -1,0 +1,40 @@
+.v-toast {
+  &__item {
+    opacity: 1;
+    min-height: 44px;
+
+    .v-toast__text {
+      // padding: 1.5em 1em;
+      color: var(--static-cr_static_white_1000, #fff);
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .v-toast__icon {
+      display: block;
+      width: 27px;
+      min-width: 27px;
+      height: 27px;
+      margin-left: 10px;
+      background: url('@/assets/image/toast/icons/info.svg') no-repeat;
+
+      [dir='rtl'] & {
+        margin-left: unset;
+        margin-right: 6px;
+      }
+    }
+
+    &.v-toast__item--success .v-toast__icon {
+      background: url('@/assets/image/toast/icons/success.svg') no-repeat;
+    }
+
+    &.v-toast__item--error .v-toast__icon {
+      background: url('@/assets/image/toast/icons/error.svg') no-repeat;
+    }
+
+    &.v-toast__item--warning .v-toast__icon {
+      background: url('@/assets/image/toast/icons/warning.svg') no-repeat;
+    }
+  }
+}

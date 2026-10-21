@@ -1,0 +1,1340 @@
+{
+  "id": "fe92a6c7-8b5d-4225-9e02-09e7892c8454",
+  "query": "用深度学习模型结合卷积注意力机制进行食物体积估计，关注单目图像、三维重建和真实餐盘场景",
+  "query_name": "用深度学习模型结合卷积注意力机制进行食物体积估计，关注单目图像、三维重建和真实餐盘场景",
+  "status": "success",
+  "new_count": 4,
+  "duplicate_count": 0,
+  "error": "",
+  "sources": [
+    {
+      "source": "model_web",
+      "status": "ok",
+      "fetched": 4,
+      "accepted": 4,
+      "filtered": 0,
+      "variant_duplicates": 0,
+      "new": 4,
+      "duplicates": 0,
+      "error": "",
+      "variants": [
+        {
+          "id": "model-tool-1",
+          "query": "deep learning food volume estimation monocular image",
+          "kind": "arXiv",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-2",
+          "query": "deep learning food volume estimation monocular image",
+          "kind": "OpenAlex",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-3",
+          "query": "food 3D reconstruction single image depth estimation volume",
+          "kind": "arXiv",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-4",
+          "query": "food 3D reconstruction single image depth estimation volume",
+          "kind": "OpenAlex",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-5",
+          "query": "convolutional attention mechanism food portion size estimation RGB image",
+          "kind": "arXiv",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-6",
+          "query": "convolutional attention mechanism food portion size estimation RGB image",
+          "kind": "OpenAlex",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-7",
+          "query": "convolutional attention mechanism food portion size estimation RGB image",
+          "kind": "Semantic Scholar",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-8",
+          "query": "food volume estimation deep learning dietary assessment",
+          "kind": "arXiv",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-9",
+          "query": "food portion size estimation neural network image",
+          "kind": "Crossref",
+          "fetched": 4,
+          "accepted": 4,
+          "filtered": 0
+        },
+        {
+          "id": "model-tool-10",
+          "query": "monocular food volume 3D reconstruction attention",
+          "kind": "DBLP",
+          "fetched": 0,
+          "accepted": 0,
+          "filtered": 0
+        }
+      ]
+    }
+  ],
+  "source_names": [
+    "arxiv",
+    "openalex"
+  ],
+  "total_fetched": 4,
+  "total_filtered": 0,
+  "papers": [
+    {
+      "title": "Multi-task Image-Based Dietary Assessment for Food Recognition and Portion Size Estimation",
+      "title_key": "multi task image based dietary assessment for food recognition and portion size estimation",
+      "authors": "Jiangpeng He, Zeman Shao, Janine Wright, Deborah Kerr, Carol Boushey, Fengqing Zhu",
+      "year": 2020,
+      "abstract": "",
+      "doi": "10.1109/mipr49039.2020.00018",
+      "arxiv_id": "",
+      "venue": "2020 IEEE Conference on Multimedia Information Processing and Retrieval (MIPR)",
+      "url": "https://doi.org/10.1109/mipr49039.2020.00018",
+      "pdf_url": "",
+      "status": "inbox",
+      "topic": "",
+      "notes": "",
+      "is_favorite": 0,
+      "id": "candidate:602d4eff-2ebb-47f1-bdf5-d7fb3c497f70",
+      "source": "model_web",
+      "external_id": "10.1109/mipr49039.2020.00018",
+      "raw": {
+        "title": "Multi-task Image-Based Dietary Assessment for Food Recognition and Portion Size Estimation",
+        "authors": "Jiangpeng He, Zeman Shao, Janine Wright, Deborah Kerr, Carol Boushey, Fengqing Zhu",
+        "year": 2020,
+        "abstract": "",
+        "doi": "10.1109/mipr49039.2020.00018",
+        "arxiv_id": "",
+        "venue": "2020 IEEE Conference on Multimedia Information Processing and Retrieval (MIPR)",
+        "url": "https://doi.org/10.1109/mipr49039.2020.00018",
+        "pdf_url": "",
+        "source": "model_web",
+        "external_id": "10.1109/mipr49039.2020.00018",
+        "open_access": false,
+        "citation_count": 0,
+        "relevance_label": "direct",
+        "relevance_reason": "图像膳食评估的多任务深度学习工作，同时做食物识别与份量估计，直接对应'深度学习模型进行食物体积/份量估计'这一任务，且基于真实餐食图像，是方法最贴近的候选。",
+        "source_citations": [
+          "https://doi.org/10.1109/mipr49039.2020.00018"
+        ],
+        "source_attested": true,
+        "verified": false,
+        "model_provider": "DeepSeek",
+        "model": "deepseek-flash",
+        "provider_sources": [
+          {
+            "source": "crossref",
+            "external_id": "10.1109/mipr49039.2020.00018",
+            "url": "https://doi.org/10.1109/mipr49039.2020.00018"
+          }
+        ],
+        "search_paths": [
+          {
+            "source": "crossref",
+            "query": "food portion size estimation neural network image"
+          }
+        ],
+        "model_relevance_label": "direct",
+        "_search_variant": "model-tool-9",
+        "_search_query": "food portion size estimation neural network image",
+        "_source_rank": 1,
+        "_variant_rank": 9
+      },
+      "sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1109/mipr49039.2020.00018",
+          "url": "https://doi.org/10.1109/mipr49039.2020.00018",
+          "fetched_at": "2026-10-15T06:31:28+08:00"
+        }
+      ],
+      "source_citations": [
+        "https://doi.org/10.1109/mipr49039.2020.00018"
+      ],
+      "source_attested": true,
+      "verified": false,
+      "relevance_reason": "图像膳食评估的多任务深度学习工作，同时做食物识别与份量估计，直接对应'深度学习模型进行食物体积/份量估计'这一任务，且基于真实餐食图像，是方法最贴近的候选。",
+      "model_provider": "DeepSeek",
+      "model": "deepseek-flash",
+      "provider_sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1109/mipr49039.2020.00018",
+          "url": "https://doi.org/10.1109/mipr49039.2020.00018"
+        }
+      ],
+      "search_paths": [
+        {
+          "source": "crossref",
+          "query": "food portion size estimation neural network image"
+        }
+      ],
+      "model_relevance_label": "direct",
+      "candidate_key": "doi:10.1109/mipr49039.2020.00018",
+      "intent_key": "intent:662af273e184e0ae5a98fba6234394ce",
+      "tags": [],
+      "discovery_paths": [
+        {
+          "variant_id": "model-tool-9",
+          "query": "food portion size estimation neural network image",
+          "source": "model_web"
+        }
+      ],
+      "citation_count": 0,
+      "open_access": false,
+      "discovery_lanes": [
+        "model-tool"
+      ],
+      "rank_fusion_score": 38,
+      "rank_sources": [
+        "crossref"
+      ],
+      "rank_paths": 1,
+      "match_reason": "来源检索结果；请人工核对相关性",
+      "relevance_score": 100,
+      "relevance_label": "高相关",
+      "relevance_reasons": [
+        "标题命中桥接概念 estimation, food, image-based, portion",
+        "命中对象：food",
+        "命中任务：estimation, portion",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "与库内论文有主题重合：Image-based food portion size estimation u",
+        "模型联网检索判定为直接相关"
+      ],
+      "candidate_identity": "doi:10.1109/mipr49039.2020.00018",
+      "prior_feedback": null,
+      "review_decision": "new",
+      "seen_before": false,
+      "seen_status": "inbox",
+      "query_id": "",
+      "recency_score": 40,
+      "novelty_score": 100,
+      "source_count": 1,
+      "impact_score": 0,
+      "source_quality_score": 35,
+      "coverage_score": 4,
+      "library_distance_score": 27,
+      "discovery_class": "高相关",
+      "discovery_score": 76,
+      "discovery_reasons": [
+        "标题命中桥接概念 estimation, food, image-based, portion",
+        "命中对象：food",
+        "命中任务：estimation, portion",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "与库内论文有主题重合：Image-based food portion size estimation u",
+        "模型联网检索判定为直接相关",
+        "概念变体命中：food portion size estimation neural network image",
+        "融合排序信号：38（1 条来源/变体路径）",
+        "本主题首次发现",
+        "召回层：model-tool"
+      ],
+      "diversity_penalty": 0.0,
+      "diversity_score": 76.0,
+      "search_rank": 1,
+      "ai_screening": {
+        "id": "candidate:602d4eff-2ebb-47f1-bdf5-d7fb3c497f70",
+        "label": "uncertain",
+        "score": 0,
+        "confidence": "low",
+        "reason": "来源没有提供摘要，无法可靠判断；建议打开原文核验。",
+        "origin": "metadata"
+      },
+      "ai_triage": {
+        "id": "candidate:602d4eff-2ebb-47f1-bdf5-d7fb3c497f70",
+        "label": "uncertain",
+        "score": 0,
+        "confidence": "low",
+        "reason": "来源没有提供摘要，无法可靠判断；建议打开原文核验。",
+        "origin": "metadata"
+      },
+      "imported_paper_id": ""
+    },
+    {
+      "title": "Image-based food portion size estimation using a smartphone without a fiducial marker",
+      "title_key": "image based food portion size estimation using a smartphone without a fiducial marker",
+      "authors": "Yifan Yang, Wenyan Jia, Tamara Bucher, Hong Zhang, Mingui Sun",
+      "year": 2018,
+      "abstract": "abstract   objective  current approaches to food volume estimation require the person to carry a fiducial marker (e.g. a checkerboard card), to be placed next to the food before taking a picture. this procedure is inconvenient and post-processing of the food picture is time-consuming and sometimes inaccurate. these problems keep people from using the smartphone for self-administered dietary assessment. the current bioengineering study presents a novel smartphone-based imaging approach to table-side estimation of food volume which overcomes current limitations.    design  we present a new method for food volume estimation without a fiducial marker. our mathematical model indicates that, using a special picture-taking strategy, the smartphone-based imaging system can be calibrated adequately if the physical length of the smartphone and the output of the motion sensor within the device are known. we also present and test a new virtual reality method for food volume estimation using the international food unit™ and a training process for error control.    results  our pilot study, with sixty-nine participants and fifteen foods, indicates that the fiducial-marker-free approach is valid and that the training improves estimation accuracy significantly ( p &amp;lt;0·05) for all but one food (egg,  p &amp;gt;0·05).    conclusions  elimination of a fiducial marker and application of virtual reality, the international food unit™ and an automated training allowed quick food volume estimation and control of the estimation error. the estimated volume could be used to search a nutrient database and determine energy and nutrients in the diet.",
+      "doi": "10.1017/s136898001800054x",
+      "arxiv_id": "",
+      "venue": "Public Health Nutrition",
+      "url": "https://doi.org/10.1017/s136898001800054x",
+      "pdf_url": "",
+      "status": "inbox",
+      "topic": "",
+      "notes": "",
+      "is_favorite": 0,
+      "id": "candidate:5b31840e-6306-4a56-a4da-15a7fc23d3aa",
+      "source": "model_web",
+      "external_id": "10.1017/s136898001800054x",
+      "raw": {
+        "title": "Image-based food portion size estimation using a smartphone without a fiducial marker",
+        "authors": "Yifan Yang, Wenyan Jia, Tamara Bucher, Hong Zhang, Mingui Sun",
+        "year": 2018,
+        "abstract": "abstract   objective  current approaches to food volume estimation require the person to carry a fiducial marker (e.g. a checkerboard card), to be placed next to the food before taking a picture. this procedure is inconvenient and post-processing of the food picture is time-consuming and sometimes inaccurate. these problems keep people from using the smartphone for self-administered dietary assessment. the current bioengineering study presents a novel smartphone-based imaging approach to table-side estimation of food volume which overcomes current limitations.    design  we present a new method for food volume estimation without a fiducial marker. our mathematical model indicates that, using a special picture-taking strategy, the smartphone-based imaging system can be calibrated adequately if the physical length of the smartphone and the output of the motion sensor within the device are known. we also present and test a new virtual reality method for food volume estimation using the international food unit™ and a training process for error control.    results  our pilot study, with sixty-nine participants and fifteen foods, indicates that the fiducial-marker-free approach is valid and that the training improves estimation accuracy significantly ( p &amp;lt;0·05) for all but one food (egg,  p &amp;gt;0·05).    conclusions  elimination of a fiducial marker and application of virtual reality, the international food unit™ and an automated training allowed quick food volume estimation and control of the estimation error. the estimated volume could be used to search a nutrient database and determine energy and nutrients in the diet.",
+        "doi": "10.1017/s136898001800054x",
+        "arxiv_id": "",
+        "venue": "Public Health Nutrition",
+        "url": "https://doi.org/10.1017/s136898001800054x",
+        "pdf_url": "",
+        "source": "model_web",
+        "external_id": "10.1017/s136898001800054x",
+        "open_access": false,
+        "citation_count": 0,
+        "relevance_label": "adjacent",
+        "relevance_reason": "智能手机拍摄、无标定板的食物体积估计，匹配'真实餐盘场景、单目拍摄'的设定；但依赖运动传感器标定与数学几何模型而非深度学习，与目标方法存在明显差别。",
+        "source_citations": [
+          "https://doi.org/10.1017/s136898001800054x"
+        ],
+        "source_attested": true,
+        "verified": false,
+        "model_provider": "DeepSeek",
+        "model": "deepseek-flash",
+        "provider_sources": [
+          {
+            "source": "crossref",
+            "external_id": "10.1017/s136898001800054x",
+            "url": "https://doi.org/10.1017/s136898001800054x"
+          }
+        ],
+        "search_paths": [
+          {
+            "source": "crossref",
+            "query": "food portion size estimation neural network image"
+          }
+        ],
+        "model_relevance_label": "adjacent",
+        "_search_variant": "model-tool-9",
+        "_search_query": "food portion size estimation neural network image",
+        "_source_rank": 3,
+        "_variant_rank": 9
+      },
+      "sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1017/s136898001800054x",
+          "url": "https://doi.org/10.1017/s136898001800054x",
+          "fetched_at": "2026-10-15T06:31:28+08:00"
+        }
+      ],
+      "source_citations": [
+        "https://doi.org/10.1017/s136898001800054x"
+      ],
+      "source_attested": true,
+      "verified": false,
+      "relevance_reason": "智能手机拍摄、无标定板的食物体积估计，匹配'真实餐盘场景、单目拍摄'的设定；但依赖运动传感器标定与数学几何模型而非深度学习，与目标方法存在明显差别。",
+      "model_provider": "DeepSeek",
+      "model": "deepseek-flash",
+      "provider_sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1017/s136898001800054x",
+          "url": "https://doi.org/10.1017/s136898001800054x"
+        }
+      ],
+      "search_paths": [
+        {
+          "source": "crossref",
+          "query": "food portion size estimation neural network image"
+        }
+      ],
+      "model_relevance_label": "adjacent",
+      "candidate_key": "doi:10.1017/s136898001800054x",
+      "intent_key": "intent:662af273e184e0ae5a98fba6234394ce",
+      "tags": [],
+      "discovery_paths": [
+        {
+          "variant_id": "model-tool-9",
+          "query": "food portion size estimation neural network image",
+          "source": "model_web"
+        }
+      ],
+      "citation_count": 0,
+      "open_access": false,
+      "discovery_lanes": [
+        "model-tool"
+      ],
+      "rank_fusion_score": 32,
+      "rank_sources": [
+        "crossref"
+      ],
+      "rank_paths": 1,
+      "match_reason": "来源检索结果；请人工核对相关性",
+      "relevance_score": 100,
+      "relevance_label": "高相关",
+      "relevance_reasons": [
+        "标题命中桥接概念 estimation, food, image-based, portion",
+        "命中对象：food",
+        "命中任务：estimation, portion, volume",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "与库内论文有主题重合：Image-based food portion size estimation u",
+        "模型联网检索判定为邻近方向"
+      ],
+      "candidate_identity": "doi:10.1017/s136898001800054x",
+      "prior_feedback": null,
+      "review_decision": "new",
+      "seen_before": false,
+      "seen_status": "inbox",
+      "query_id": "",
+      "recency_score": 20,
+      "novelty_score": 100,
+      "source_count": 1,
+      "impact_score": 0,
+      "source_quality_score": 35,
+      "coverage_score": 5,
+      "library_distance_score": 97,
+      "discovery_class": "高相关",
+      "discovery_score": 73,
+      "discovery_reasons": [
+        "标题命中桥接概念 estimation, food, image-based, portion",
+        "命中对象：food",
+        "命中任务：estimation, portion, volume",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "与库内论文有主题重合：Image-based food portion size estimation u",
+        "模型联网检索判定为邻近方向",
+        "概念变体命中：food portion size estimation neural network image",
+        "融合排序信号：32（1 条来源/变体路径）",
+        "与馆藏研究方向高度相连",
+        "本主题首次发现",
+        "召回层：model-tool"
+      ],
+      "diversity_penalty": 7.8,
+      "diversity_score": 65.2,
+      "search_rank": 2,
+      "ai_screening": {
+        "id": "candidate:5b31840e-6306-4a56-a4da-15a7fc23d3aa",
+        "label": "adjacent",
+        "score": 68,
+        "confidence": "high",
+        "reason": "智能手机单目图像估食物体积、真实餐桌场景，但无深度学习/卷积注意力/三维重建。",
+        "origin": "model"
+      },
+      "ai_triage": {
+        "id": "candidate:5b31840e-6306-4a56-a4da-15a7fc23d3aa",
+        "label": "adjacent",
+        "score": 68,
+        "confidence": "high",
+        "reason": "智能手机单目图像估食物体积、真实餐桌场景，但无深度学习/卷积注意力/三维重建。",
+        "origin": "model"
+      },
+      "imported_paper_id": ""
+    },
+    {
+      "title": "Comparison of Known Food Weights with Image-Based Portion-Size Automated Estimation and Adolescents' Self-Reported Portion Size",
+      "title_key": "comparison of known food weights with image based portion size automated estimation and adolescents self reported portion size",
+      "authors": "Christina D. Lee, Junghoon Chae, TusaRebecca E. Schap, Deborah A. Kerr, Edward J. Delp, David S. Ebert, Carol J. Boushey",
+      "year": 2012,
+      "abstract": "background: \n                     diet is a critical element of diabetes self-management. an emerging area of research is the use of images for dietary records using mobile telephones with embedded cameras. these tools are being designed to reduce user burden and to improve accuracy of portion-size estimation through automation. the objectives of this study were to (1) assess the error of automatically determined portion weights compared to known portion weights of foods and (2) to compare the error between automation and human. \n                   \n                   \n                     methods: \n                     adolescents ( n = 15) captured images of their eating occasions over a 24 h period. all foods and beverages served were weighed. adolescents self-reported portion sizes for one meal. image analysis was used to estimate portion weights. data analysis compared known weights, automated weights, and self-reported portions. \n                   \n                   \n                     results: \n                     for the 19 foods, the mean ratio of automated weight estimate to known weight ranged from 0.89 to 4.61, and 9 foods were within 0.80 to 1.20. the largest error was for lettuce and the most accurate was strawberry jam. the children were fairly accurate with portion estimates for two foods (sausage links, toast) using one type of estimation aid and two foods (sausage links, scrambled eggs) using another aid. the automated method was fairly accurate for two foods (sausage links, jam); however, the 95% confidence intervals for the automated estimates were consistently narrower than human estimates. \n                   \n                   \n                     conclusions: \n                     the ability of humans to estimate portion sizes of foods remains a problem and a perceived burden. errors in automated portion-size estimation can be systematically addressed while minimizing the burden on people. future applications that take over the burden of these processes may translate to better diabetes self-management.",
+      "doi": "10.1177/193229681200600231",
+      "arxiv_id": "",
+      "venue": "Journal of Diabetes Science and Technology",
+      "url": "https://doi.org/10.1177/193229681200600231",
+      "pdf_url": "",
+      "status": "inbox",
+      "topic": "",
+      "notes": "",
+      "is_favorite": 0,
+      "id": "candidate:75e4f893-fb0c-4d00-938c-9bcf4ba3c500",
+      "source": "model_web",
+      "external_id": "10.1177/193229681200600231",
+      "raw": {
+        "title": "Comparison of Known Food Weights with Image-Based Portion-Size Automated Estimation and Adolescents' Self-Reported Portion Size",
+        "authors": "Christina D. Lee, Junghoon Chae, TusaRebecca E. Schap, Deborah A. Kerr, Edward J. Delp, David S. Ebert, Carol J. Boushey",
+        "year": 2012,
+        "abstract": "background: \n                     diet is a critical element of diabetes self-management. an emerging area of research is the use of images for dietary records using mobile telephones with embedded cameras. these tools are being designed to reduce user burden and to improve accuracy of portion-size estimation through automation. the objectives of this study were to (1) assess the error of automatically determined portion weights compared to known portion weights of foods and (2) to compare the error between automation and human. \n                   \n                   \n                     methods: \n                     adolescents ( n = 15) captured images of their eating occasions over a 24 h period. all foods and beverages served were weighed. adolescents self-reported portion sizes for one meal. image analysis was used to estimate portion weights. data analysis compared known weights, automated weights, and self-reported portions. \n                   \n                   \n                     results: \n                     for the 19 foods, the mean ratio of automated weight estimate to known weight ranged from 0.89 to 4.61, and 9 foods were within 0.80 to 1.20. the largest error was for lettuce and the most accurate was strawberry jam. the children were fairly accurate with portion estimates for two foods (sausage links, toast) using one type of estimation aid and two foods (sausage links, scrambled eggs) using another aid. the automated method was fairly accurate for two foods (sausage links, jam); however, the 95% confidence intervals for the automated estimates were consistently narrower than human estimates. \n                   \n                   \n                     conclusions: \n                     the ability of humans to estimate portion sizes of foods remains a problem and a perceived burden. errors in automated portion-size estimation can be systematically addressed while minimizing the burden on people. future applications that take over the burden of these processes may translate to better diabetes self-management.",
+        "doi": "10.1177/193229681200600231",
+        "arxiv_id": "",
+        "venue": "Journal of Diabetes Science and Technology",
+        "url": "https://doi.org/10.1177/193229681200600231",
+        "pdf_url": "",
+        "source": "model_web",
+        "external_id": "10.1177/193229681200600231",
+        "open_access": false,
+        "citation_count": 0,
+        "relevance_label": "adjacent",
+        "relevance_reason": "基于图像的自动化份量估计并与已知重量对比，任务一致且面向真实用餐图像；但属早期图像分析流程，非深度学习/注意力方法，相关性偏邻近。",
+        "source_citations": [
+          "https://doi.org/10.1177/193229681200600231"
+        ],
+        "source_attested": true,
+        "verified": false,
+        "model_provider": "DeepSeek",
+        "model": "deepseek-flash",
+        "provider_sources": [
+          {
+            "source": "crossref",
+            "external_id": "10.1177/193229681200600231",
+            "url": "https://doi.org/10.1177/193229681200600231"
+          }
+        ],
+        "search_paths": [
+          {
+            "source": "crossref",
+            "query": "food portion size estimation neural network image"
+          }
+        ],
+        "model_relevance_label": "adjacent",
+        "_search_variant": "model-tool-9",
+        "_search_query": "food portion size estimation neural network image",
+        "_source_rank": 4,
+        "_variant_rank": 9
+      },
+      "sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1177/193229681200600231",
+          "url": "https://doi.org/10.1177/193229681200600231",
+          "fetched_at": "2026-10-15T06:31:28+08:00"
+        }
+      ],
+      "source_citations": [
+        "https://doi.org/10.1177/193229681200600231"
+      ],
+      "source_attested": true,
+      "verified": false,
+      "relevance_reason": "基于图像的自动化份量估计并与已知重量对比，任务一致且面向真实用餐图像；但属早期图像分析流程，非深度学习/注意力方法，相关性偏邻近。",
+      "model_provider": "DeepSeek",
+      "model": "deepseek-flash",
+      "provider_sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1177/193229681200600231",
+          "url": "https://doi.org/10.1177/193229681200600231"
+        }
+      ],
+      "search_paths": [
+        {
+          "source": "crossref",
+          "query": "food portion size estimation neural network image"
+        }
+      ],
+      "model_relevance_label": "adjacent",
+      "candidate_key": "doi:10.1177/193229681200600231",
+      "intent_key": "intent:662af273e184e0ae5a98fba6234394ce",
+      "tags": [],
+      "discovery_paths": [
+        {
+          "variant_id": "model-tool-9",
+          "query": "food portion size estimation neural network image",
+          "source": "model_web"
+        }
+      ],
+      "citation_count": 0,
+      "open_access": false,
+      "discovery_lanes": [
+        "model-tool"
+      ],
+      "rank_fusion_score": 30,
+      "rank_sources": [
+        "crossref"
+      ],
+      "rank_paths": 1,
+      "match_reason": "来源检索结果；请人工核对相关性",
+      "relevance_score": 92,
+      "relevance_label": "高相关",
+      "relevance_reasons": [
+        "标题命中桥接概念 estimation, food, image-based, portion",
+        "命中对象：food, meal",
+        "命中任务：estimation, portion",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "模型联网检索判定为邻近方向"
+      ],
+      "candidate_identity": "doi:10.1177/193229681200600231",
+      "prior_feedback": null,
+      "review_decision": "new",
+      "seen_before": false,
+      "seen_status": "inbox",
+      "query_id": "",
+      "recency_score": 0,
+      "novelty_score": 100,
+      "source_count": 1,
+      "impact_score": 0,
+      "source_quality_score": 35,
+      "coverage_score": 6,
+      "library_distance_score": 32,
+      "discovery_class": "高相关",
+      "discovery_score": 66,
+      "discovery_reasons": [
+        "标题命中桥接概念 estimation, food, image-based, portion",
+        "命中对象：food, meal",
+        "命中任务：estimation, portion",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "模型联网检索判定为邻近方向",
+        "概念变体命中：food portion size estimation neural network image",
+        "融合排序信号：30（1 条来源/变体路径）",
+        "本主题首次发现",
+        "召回层：model-tool"
+      ],
+      "diversity_penalty": 6.6,
+      "diversity_score": 59.4,
+      "search_rank": 3,
+      "ai_screening": {
+        "id": "candidate:75e4f893-fb0c-4d00-938c-9bcf4ba3c500",
+        "label": "adjacent",
+        "score": 38,
+        "confidence": "high",
+        "reason": "图像自动估份量并与称重比较，属相近任务，但非体积估计且无深度学习/注意力/三维重建。",
+        "origin": "model"
+      },
+      "ai_triage": {
+        "id": "candidate:75e4f893-fb0c-4d00-938c-9bcf4ba3c500",
+        "label": "adjacent",
+        "score": 38,
+        "confidence": "high",
+        "reason": "图像自动估份量并与称重比较，属相近任务，但非体积估计且无深度学习/注意力/三维重建。",
+        "origin": "model"
+      },
+      "imported_paper_id": ""
+    },
+    {
+      "title": "A comparison of food portion size estimation using geometric models and depth images",
+      "title_key": "a comparison of food portion size estimation using geometric models and depth images",
+      "authors": "Shaobo Fang, Fengqing Zhu, Chufan Jiang, Song Zhang, Carol J. Boushey, Edward J. Delp",
+      "year": 2016,
+      "abstract": "",
+      "doi": "10.1109/icip.2016.7532312",
+      "arxiv_id": "",
+      "venue": "2016 IEEE International Conference on Image Processing (ICIP)",
+      "url": "https://doi.org/10.1109/icip.2016.7532312",
+      "pdf_url": "",
+      "status": "inbox",
+      "topic": "",
+      "notes": "",
+      "is_favorite": 0,
+      "id": "candidate:e46705cd-ff8d-42d5-aebe-6db0e764318b",
+      "source": "model_web",
+      "external_id": "10.1109/icip.2016.7532312",
+      "raw": {
+        "title": "A comparison of food portion size estimation using geometric models and depth images",
+        "authors": "Shaobo Fang, Fengqing Zhu, Chufan Jiang, Song Zhang, Carol J. Boushey, Edward J. Delp",
+        "year": 2016,
+        "abstract": "",
+        "doi": "10.1109/icip.2016.7532312",
+        "arxiv_id": "",
+        "venue": "2016 IEEE International Conference on Image Processing (ICIP)",
+        "url": "https://doi.org/10.1109/icip.2016.7532312",
+        "pdf_url": "",
+        "source": "model_web",
+        "external_id": "10.1109/icip.2016.7532312",
+        "open_access": false,
+        "citation_count": 0,
+        "relevance_label": "adjacent",
+        "relevance_reason": "面向食物份量估计，比较几何模型与深度图像两种三维信息途径，与'单目/深度图像三维重建用于食物体积'场景高度相关；但方法为传统几何建模而非卷积注意力网络，属可迁移的邻近工作。",
+        "source_citations": [
+          "https://doi.org/10.1109/icip.2016.7532312"
+        ],
+        "source_attested": true,
+        "verified": false,
+        "model_provider": "DeepSeek",
+        "model": "deepseek-flash",
+        "provider_sources": [
+          {
+            "source": "crossref",
+            "external_id": "10.1109/icip.2016.7532312",
+            "url": "https://doi.org/10.1109/icip.2016.7532312"
+          }
+        ],
+        "search_paths": [
+          {
+            "source": "crossref",
+            "query": "food portion size estimation neural network image"
+          }
+        ],
+        "model_relevance_label": "adjacent",
+        "_search_variant": "model-tool-9",
+        "_search_query": "food portion size estimation neural network image",
+        "_source_rank": 2,
+        "_variant_rank": 9
+      },
+      "sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1109/icip.2016.7532312",
+          "url": "https://doi.org/10.1109/icip.2016.7532312",
+          "fetched_at": "2026-10-15T06:31:28+08:00"
+        }
+      ],
+      "source_citations": [
+        "https://doi.org/10.1109/icip.2016.7532312"
+      ],
+      "source_attested": true,
+      "verified": false,
+      "relevance_reason": "面向食物份量估计，比较几何模型与深度图像两种三维信息途径，与'单目/深度图像三维重建用于食物体积'场景高度相关；但方法为传统几何建模而非卷积注意力网络，属可迁移的邻近工作。",
+      "model_provider": "DeepSeek",
+      "model": "deepseek-flash",
+      "provider_sources": [
+        {
+          "source": "crossref",
+          "external_id": "10.1109/icip.2016.7532312",
+          "url": "https://doi.org/10.1109/icip.2016.7532312"
+        }
+      ],
+      "search_paths": [
+        {
+          "source": "crossref",
+          "query": "food portion size estimation neural network image"
+        }
+      ],
+      "model_relevance_label": "adjacent",
+      "candidate_key": "doi:10.1109/icip.2016.7532312",
+      "intent_key": "intent:662af273e184e0ae5a98fba6234394ce",
+      "tags": [],
+      "discovery_paths": [
+        {
+          "variant_id": "model-tool-9",
+          "query": "food portion size estimation neural network image",
+          "source": "model_web"
+        }
+      ],
+      "citation_count": 0,
+      "open_access": false,
+      "discovery_lanes": [
+        "model-tool"
+      ],
+      "rank_fusion_score": 34,
+      "rank_sources": [
+        "crossref"
+      ],
+      "rank_paths": 1,
+      "match_reason": "来源检索结果；请人工核对相关性",
+      "relevance_score": 91,
+      "relevance_label": "高相关",
+      "relevance_reasons": [
+        "标题命中桥接概念 estimation, food, portion",
+        "命中对象：food",
+        "命中任务：estimation, portion",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "与已有主题存在部分重合",
+        "模型联网检索判定为邻近方向"
+      ],
+      "candidate_identity": "doi:10.1109/icip.2016.7532312",
+      "prior_feedback": null,
+      "review_decision": "new",
+      "seen_before": false,
+      "seen_status": "inbox",
+      "query_id": "",
+      "recency_score": 0,
+      "novelty_score": 100,
+      "source_count": 1,
+      "impact_score": 0,
+      "source_quality_score": 35,
+      "coverage_score": 3,
+      "library_distance_score": 27,
+      "discovery_class": "高相关",
+      "discovery_score": 66,
+      "discovery_reasons": [
+        "标题命中桥接概念 estimation, food, portion",
+        "命中对象：food",
+        "命中任务：estimation, portion",
+        "对象与核心任务同时命中",
+        "已用中英文概念桥接校正相关度",
+        "与已有主题存在部分重合",
+        "模型联网检索判定为邻近方向",
+        "概念变体命中：food portion size estimation neural network image",
+        "融合排序信号：34（1 条来源/变体路径）",
+        "本主题首次发现",
+        "召回层：model-tool"
+      ],
+      "diversity_penalty": 10.8,
+      "diversity_score": 55.2,
+      "search_rank": 4,
+      "ai_screening": {
+        "id": "candidate:e46705cd-ff8d-42d5-aebe-6db0e764318b",
+        "label": "uncertain",
+        "score": 0,
+        "confidence": "low",
+        "reason": "来源没有提供摘要，无法可靠判断；建议打开原文核验。",
+        "origin": "metadata"
+      },
+      "ai_triage": {
+        "id": "candidate:e46705cd-ff8d-42d5-aebe-6db0e764318b",
+        "label": "uncertain",
+        "score": 0,
+        "confidence": "low",
+        "reason": "来源没有提供摘要，无法可靠判断；建议打开原文核验。",
+        "origin": "metadata"
+      },
+      "imported_paper_id": ""
+    }
+  ],
+  "plan": {
+    "original_query": "用深度学习模型结合卷积注意力机制进行食物体积估计，关注单目图像、三维重建和真实餐盘场景",
+    "concept_terms": [
+      "注意力机制",
+      "食物体积",
+      "体积估计",
+      "深度学习",
+      "三维重建",
+      "注意力",
+      "食物",
+      "卷积",
+      "图像",
+      "估计"
+    ],
+    "expanded_concept_terms": [
+      "注意力机制",
+      "食物体积",
+      "体积估计",
+      "深度学习",
+      "三维重建",
+      "注意力",
+      "食物",
+      "卷积",
+      "图像",
+      "估计",
+      "attention mechanism",
+      "attention module",
+      "self-attention",
+      "food volume estimation",
+      "food volume measurement",
+      "food portion volume",
+      "volume estimation",
+      "volumetric estimation",
+      "volume measurement",
+      "deep learning",
+      "deep neural network",
+      "neural network",
+      "3d reconstruction",
+      "three-dimensional reconstruction",
+      "3d vision",
+      "food",
+      "meal",
+      "dish",
+      "convolutional neural network",
+      "convolutional",
+      "cnn",
+      "image-based",
+      "computer vision",
+      "visual",
+      "estimation",
+      "measurement"
+    ],
+    "facets": {
+      "对象": {
+        "hits": [
+          "食物",
+          "图像"
+        ],
+        "expansions": [
+          "food",
+          "meal",
+          "dish",
+          "food image",
+          "image",
+          "image understanding"
+        ]
+      },
+      "方法": {
+        "hits": [
+          "深度学习",
+          "卷积",
+          "注意力机制",
+          "注意力",
+          "三维重建"
+        ],
+        "expansions": [
+          "deep learning",
+          "deep neural network",
+          "neural network",
+          "convolutional neural network",
+          "convolutional",
+          "cnn",
+          "attention mechanism",
+          "attention module"
+        ]
+      },
+      "任务": {
+        "hits": [
+          "食物体积",
+          "体积估计",
+          "估计"
+        ],
+        "expansions": [
+          "food volume estimation",
+          "food volume measurement",
+          "food portion volume",
+          "volume estimation",
+          "volumetric estimation",
+          "volume measurement",
+          "estimation",
+          "measurement"
+        ]
+      }
+    },
+    "exact_phrases": [],
+    "query_variants": [
+      {
+        "id": "model-tool-1",
+        "query": "deep learning food volume estimation monocular image",
+        "kind": "arXiv",
+        "source": "arxiv",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-2",
+        "query": "deep learning food volume estimation monocular image",
+        "kind": "OpenAlex",
+        "source": "openalex",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-3",
+        "query": "food 3D reconstruction single image depth estimation volume",
+        "kind": "arXiv",
+        "source": "arxiv",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-4",
+        "query": "food 3D reconstruction single image depth estimation volume",
+        "kind": "OpenAlex",
+        "source": "openalex",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-5",
+        "query": "convolutional attention mechanism food portion size estimation RGB image",
+        "kind": "arXiv",
+        "source": "arxiv",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-6",
+        "query": "convolutional attention mechanism food portion size estimation RGB image",
+        "kind": "OpenAlex",
+        "source": "openalex",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-7",
+        "query": "convolutional attention mechanism food portion size estimation RGB image",
+        "kind": "Semantic Scholar",
+        "source": "semanticscholar",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-8",
+        "query": "food volume estimation deep learning dietary assessment",
+        "kind": "arXiv",
+        "source": "arxiv",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-9",
+        "query": "food portion size estimation neural network image",
+        "kind": "Crossref",
+        "source": "crossref",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      },
+      {
+        "id": "model-tool-10",
+        "query": "monocular food volume 3D reconstruction attention",
+        "kind": "DBLP",
+        "source": "dblp",
+        "reason": "模型根据研究问题选择检索式和学术来源",
+        "lane": "model-tool"
+      }
+    ],
+    "expansion_count": 9,
+    "coverage_layers": [
+      "AI 规划检索角度",
+      "arXiv",
+      "OpenAlex",
+      "Semantic Scholar",
+      "Crossref",
+      "DBLP"
+    ],
+    "sources": [
+      {
+        "id": "arxiv",
+        "role": "模型通过检索工具选择的学术来源"
+      },
+      {
+        "id": "openalex",
+        "role": "模型通过检索工具选择的学术来源"
+      },
+      {
+        "id": "semanticscholar",
+        "role": "模型通过检索工具选择的学术来源"
+      },
+      {
+        "id": "crossref",
+        "role": "模型通过检索工具选择的学术来源"
+      },
+      {
+        "id": "dblp",
+        "role": "模型通过检索工具选择的学术来源"
+      }
+    ],
+    "filters": {
+      "sort": "relevance",
+      "search_depth": "focused",
+      "discovery_mode": "balanced",
+      "expand_concepts": true,
+      "suppress_seen": true,
+      "avoid_repeats": true,
+      "incremental_discovery": true,
+      "include_open_access": false,
+      "expand_relations": false,
+      "diversity": true,
+      "adaptive_expansion": true,
+      "ai_expand": true,
+      "auto_add": false,
+      "ai_screen": true,
+      "review_only": true,
+      "model_web_fallback_to_connectors": false,
+      "parallel_sources": true,
+      "search_backend": "model_web"
+    },
+    "strategy": "模型拆解研究问题并循环调用 LitLoom 论文检索工具 → 并行查询匹配的学术来源 → 模型筛选真实来源候选 → 按本课题历史去重",
+    "ranking": {
+      "method": "reciprocal-rank-fusion + explainable lexical triage + MMR diversity",
+      "source_weights": {
+        "openalex": 1.0,
+        "semanticscholar": 1.12,
+        "arxiv": 0.98,
+        "openreview": 1.08,
+        "crossref": 0.92,
+        "europepmc": 1.0,
+        "dblp": 0.9
+      }
+    },
+    "search_options": {
+      "search_depth": "focused",
+      "discovery_mode": "balanced",
+      "sort": "relevance",
+      "expand_concepts": true,
+      "suppress_seen": true,
+      "avoid_repeats": true,
+      "incremental_discovery": true,
+      "include_open_access": false,
+      "expand_relations": false,
+      "diversity": true,
+      "adaptive_expansion": true,
+      "ai_expand": true,
+      "auto_add": false,
+      "ai_screen": true,
+      "review_only": true,
+      "model_web_fallback_to_connectors": false,
+      "parallel_sources": true,
+      "search_backend": "model_web"
+    },
+    "result_limit": 6,
+    "discovery_intent_key": "intent:662af273e184e0ae5a98fba6234394ce",
+    "model_search_memory": {
+      "excluded_title_count": 0,
+      "excluded_identity_count": 0
+    },
+    "search_backend_requested": "model_web",
+    "search_backend_executed": "model_web",
+    "model_tool_calls": 6,
+    "model_requests": 4
+  },
+  "summary": {
+    "high_relevance": 4,
+    "adjacent": 0,
+    "new_to_topic": 4,
+    "open_access": 0,
+    "with_citations": 0,
+    "lanes": [
+      "model-tool"
+    ],
+    "repeat_count": 0,
+    "repeat_fallback": false,
+    "repeat_fallback_for_ai_screen": false,
+    "result_limit": 6,
+    "truncated_count": 0,
+    "search_backend": "model_web",
+    "search_backend_executed": "model_web",
+    "model_web_fallback": false,
+    "model_web_warning": "",
+    "model_web_quality_filtered": 0,
+    "model_web_gaps": [
+      "本轮未获得任何深度学习+卷积注意力机制直接用于食物体积估计的候选，注意力机制与食物体积任务的结合证据缺失。",
+      "缺少单目RGB图像端到端三维重建/深度估计用于餐盘食物体积的最新工作，尤其来自 arXiv/OpenAlex 的近期预印本（本轮这些来源被限流未返回结果）。",
+      "缺少带真实餐盘、带参照物/标定的公开数据集与评测方法的候选，难以评估方法在真实场景的泛化。",
+      "卷积注意力（如CBAM/SE/self-attention）在食物分割或体积回归中的消融证据未覆盖。"
+    ],
+    "model_web_next_queries": [
+      "food volume estimation monocular depth network attention",
+      "RGB-D food portion size deep learning segmentation",
+      "self-attention food recognition volume regression plate",
+      "monocular 3D food reconstruction neural network dietary",
+      "depth estimation on food images transformer attention",
+      "food volume estimation dataset benchmark RGB image"
+    ],
+    "candidate_mode": true,
+    "intent_key": "intent:662af273e184e0ae5a98fba6234394ce",
+    "ai_screening": {
+      "status": "completed",
+      "started_at": "2026-10-15T06:31:48+08:00",
+      "completed_at": "2026-10-15T06:31:55+08:00",
+      "screened": 4,
+      "total": 4,
+      "model": "deepseek-flash",
+      "error": "",
+      "retry_count": 0,
+      "retried_groups": 0,
+      "partial_count": 0,
+      "run_id": "fe92a6c7-8b5d-4225-9e02-09e7892c8454",
+      "candidate_count": 4,
+      "processed_count": 4,
+      "created_at": "2026-10-15T06:31:48+08:00",
+      "updated_at": "2026-10-15T06:31:55+08:00",
+      "capped": false,
+      "summary": {
+        "direct": 0,
+        "adjacent": 2,
+        "unrelated": 0,
+        "uncertain": 2
+      }
+    },
+    "triage": {
+      "status": "completed",
+      "started_at": "2026-10-15T06:31:48+08:00",
+      "completed_at": "2026-10-15T06:31:55+08:00",
+      "screened": 4,
+      "total": 4,
+      "model": "deepseek-flash",
+      "error": "",
+      "retry_count": 0,
+      "retried_groups": 0,
+      "partial_count": 0,
+      "run_id": "fe92a6c7-8b5d-4225-9e02-09e7892c8454",
+      "candidate_count": 4,
+      "processed_count": 4,
+      "created_at": "2026-10-15T06:31:48+08:00",
+      "updated_at": "2026-10-15T06:31:55+08:00",
+      "capped": false,
+      "summary": {
+        "direct": 0,
+        "adjacent": 2,
+        "unrelated": 0,
+        "uncertain": 2
+      }
+    }
+  },
+  "accepted_count": 4,
+  "candidate_mode": true,
+  "intent_key": "intent:662af273e184e0ae5a98fba6234394ce",
+  "triage": {
+    "run_id": "fe92a6c7-8b5d-4225-9e02-09e7892c8454",
+    "status": "completed",
+    "model": "deepseek-flash",
+    "candidate_count": 4,
+    "processed_count": 4,
+    "error": "",
+    "created_at": "2026-10-15T06:31:48+08:00",
+    "updated_at": "2026-10-15T06:31:55+08:00",
+    "completed_at": "2026-10-15T06:31:55+08:00",
+    "total": 4,
+    "screened": 4,
+    "configured": true,
+    "capped": false,
+    "summary": {
+      "direct": 0,
+      "adjacent": 2,
+      "unrelated": 0,
+      "uncertain": 2
+    },
+    "retry_count": 0,
+    "retried_groups": 0,
+    "partial_count": 0
+  },
+  "ai_screening": {
+    "run_id": "fe92a6c7-8b5d-4225-9e02-09e7892c8454",
+    "status": "completed",
+    "model": "deepseek-flash",
+    "candidate_count": 4,
+    "processed_count": 4,
+    "error": "",
+    "created_at": "2026-10-15T06:31:48+08:00",
+    "updated_at": "2026-10-15T06:31:55+08:00",
+    "completed_at": "2026-10-15T06:31:55+08:00",
+    "total": 4,
+    "screened": 4,
+    "configured": true,
+    "capped": false,
+    "summary": {
+      "direct": 0,
+      "adjacent": 2,
+      "unrelated": 0,
+      "uncertain": 2
+    },
+    "retry_count": 0,
+    "retried_groups": 0,
+    "partial_count": 0
+  },
+  "results_available": true,
+  "run": {
+    "id": "fe92a6c7-8b5d-4225-9e02-09e7892c8454",
+    "query_id": "",
+    "query_name": "用深度学习模型结合卷积注意力机制进行食物体积估计，关注单目图像、三维重建和真实餐盘场景",
+    "status": "success",
+    "started_at": "2026-10-15T06:31:28+08:00",
+    "completed_at": "2026-10-15T06:31:48+08:00",
+    "new_count": 4,
+    "duplicate_count": 0,
+    "error": "",
+    "is_scheduled": 0,
+    "sources": [
+      "arxiv",
+      "openalex"
+    ],
+    "source_details": [
+      {
+        "source": "model_web",
+        "status": "ok",
+        "fetched": 4,
+        "accepted": 4,
+        "filtered": 0,
+        "variant_duplicates": 0,
+        "new": 4,
+        "duplicates": 0,
+        "error": "",
+        "variants": [
+          {
+            "id": "model-tool-1",
+            "query": "deep learning food volume estimation monocular image",
+            "kind": "arXiv",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-2",
+            "query": "deep learning food volume estimation monocular image",
+            "kind": "OpenAlex",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-3",
+            "query": "food 3D reconstruction single image depth estimation volume",
+            "kind": "arXiv",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-4",
+            "query": "food 3D reconstruction single image depth estimation volume",
+            "kind": "OpenAlex",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-5",
+            "query": "convolutional attention mechanism food portion size estimation RGB image",
+            "kind": "arXiv",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-6",
+            "query": "convolutional attention mechanism food portion size estimation RGB image",
+            "kind": "OpenAlex",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-7",
+            "query": "convolutional attention mechanism food portion size estimation RGB image",
+            "kind": "Semantic Scholar",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-8",
+            "query": "food volume estimation deep learning dietary assessment",
+            "kind": "arXiv",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-9",
+            "query": "food portion size estimation neural network image",
+            "kind": "Crossref",
+            "fetched": 4,
+            "accepted": 4,
+            "filtered": 0
+          },
+          {
+            "id": "model-tool-10",
+            "query": "monocular food volume 3D reconstruction attention",
+            "kind": "DBLP",
+            "fetched": 0,
+            "accepted": 0,
+            "filtered": 0
+          }
+        ]
+      }
+    ],
+    "query": null,
+    "data_quality": "complete",
+    "job": {
+      "id": "fe92a6c7-8b5d-4225-9e02-09e7892c8454",
+      "status": "success",
+      "stage": "completed",
+      "attempts": 1,
+      "next_retry_at": "",
+      "last_error": "",
+      "created_at": "2026-10-15T06:31:28+08:00",
+      "updated_at": "2026-10-15T06:31:48+08:00"
+    },
+    "candidate_mode": true,
+    "candidate_count": 4,
+    "imported_count": 0,
+    "awaiting_review_count": 4
+  }
+}

@@ -3,32 +3,41 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "graduate-literature-desk"
+name = "litloom"
 dynamic = ["version"]
-description = "Local-first, auditable research literature workspace for graduate students"
+description = "LitLoom: a local-first, auditable research literature workspace for graduate students"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{name = "Graduate Literature Desk contributors"}]
+authors = [{name = "LitLoom contributors"}]
 dependencies = []
 
 [project.optional-dependencies]
 pdf = ["pypdf>=5.0"]
 vision = ["PyMuPDF>=1.24"]
+# Optional ecosystem adapters are deliberately isolated from the zero-dependency
+# local runtime. Add them only when the deployment needs their capabilities.
+agent = ["pydantic-ai>=2.58,<3", "langgraph>=1.2,<2"]
+mcp = ["mcp>=2.3,<3"]
+rag-eval = ["ragas>=0.4,<1"]
+postgres = ["SQLAlchemy>=2.0,<3", "psycopg[binary]>=3.2,<4", "alembic>=1.14,<2"]
 
 [project.scripts]
-literature-desk = "app:main"
+litloom = "app:main"
+litloom-mcp = "mcp_server:main"
 
 [tool.setuptools]
-py-modules = ["app"]
+py-modules = ["app", "mcp_server"]
 include-package-data = true
 
 [tool.setuptools.dynamic]
 version = {attr = "literature_desk.__version__"}
 
 [tool.setuptools.data-files]
-static = ["static/index.html", "static/app.css", "static/app.js"]
-docs = ["README.md", "LICENSE", "ARCHITECTURE.md", "MULTIUSER_PLATFORM_DESIGN.md", "OPERATIONS.md", "PROJECT_SHOWCASE.md", "需求分析.md", "CHANGELOG.md", "SECURITY.md", "openapi.yaml", "ADR.md", "DEVELOPMENT.md", "DEMO_RUNBOOK.md", ".env.example"]
+static = ["static/index.html", "static/app.css", "static/pdf-import.css", "static/agent-autonomy.css", "static/study.css", "static/workspace.css", "static/app.js", "static/favicon.svg", "static/litloom-wordmark.png", "static/litloom-icon.png"]
+"static/js" = ["static/js/views.js", "static/js/discovery.js", "static/js/library.js", "static/js/reader.js", "static/js/actions.js"]
+docs = ["README.md", "LICENSE", "ARCHITECTURE.md", "AGENT_ECOSYSTEM.md", "MULTIUSER_PLATFORM_DESIGN.md", "OPERATIONS.md", "PROJECT_SHOWCASE.md", "需求分析.md", "CHANGELOG.md", "SECURITY.md", "openapi.yaml", "ADR.md", "DEVELOPMENT.md", "DEMO_RUNBOOK.md", "MCP.md", ".env.example", "CONTRIBUTING.md", "docs/PROJECT_STRUCTURE.md", "docs/ENGINEERING_PLAYBOOK.md"]
+evaluation = ["evaluation/retrieval_baseline.json"]
 
 [tool.setuptools.packages.find]
 include = ["literature_desk*"]

@@ -8,6 +8,10 @@
 
 多人平台和全文论文分析的目标代码边界、迁移顺序、租户隔离测试与证据质量门槛见 [`MULTIUSER_PLATFORM_DESIGN.md`](MULTIUSER_PLATFORM_DESIGN.md)。在阶段 A 完成模块化和契约测试前，不要直接把真实 SQLite 数据库改造成多人共享库。
 
+当前代码按领域放在 `literature_desk/`：`workspaces.py` 和 `database.py` 管理身份/持久化边界，`library.py` 管理文献记录，`documents.py` 与 `paper_analysis.py` 管理 PDF 和阅读分析，`providers.py` 与 `discovery.py` 管理来源检索及候选编排，`jobs.py` 管理后台任务，`research_agents.py` 管理目标工作流，`web/handler.py` 管理 HTTP 适配。`app.py` 只保留运行时配置、启动逻辑与旧 API 兼容导出。不要让领域模块反向 `import app`；历史依赖暂经 `literature_desk.services` 兼容绑定，新增代码优先通过函数参数或小型端口传递依赖。
+
+企业工程边界、项目目录和发布决策分别见 [`CONTRIBUTING.md`](CONTRIBUTING.md)、[`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) 和 [`docs/ENGINEERING_PLAYBOOK.md`](docs/ENGINEERING_PLAYBOOK.md)。配置诊断使用 `scripts/doctor.ps1`；API 错误统一保留 `error`，并提供 `error_code`、`retryable`、`request_id`，契约见 `openapi.yaml` 的 `ErrorResponse`。
+
 ## 2. Baseline 与实现
 
 1. 记录当前版本、schema、论文数和最近备份。

@@ -1,0 +1,69 @@
+@-webkit-keyframes bounceInUp {
+  0%,
+  60%,
+  75%,
+  90%,
+  to {
+    -webkit-animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+
+  0% {
+    opacity: 0;
+    -webkit-transform: translate3d(0, 3000px, 0) scaleY(5);
+    transform: translate3d(0, 3000px, 0) scaleY(5);
+  }
+
+  60% {
+    opacity: 1;
+    -webkit-transform: translate3d(0, -10px, 0) scaleY(0.9);
+    transform: translate3d(0, -10px, 0) scaleY(0.9);
+  }
+
+  80% {
+    -webkit-transform: translate3d(0, 5px, 0) scaleY(0.95);
+    transform: translate3d(0, 5px, 0) scaleY(0.95);
+  }
+
+  /*     90% {
+        -webkit-transform: translate3d(0,-5px,0) scaleY(.985);
+        transform: translate3d(0,-5px,0) scaleY(.985)
+    } */
+
+  to {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}
+
+.animate__bounceOutUp {
+  animation: bounceInUp 1s both;
+}
+
+.xl-chrome-ext-footer__ball {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  bottom: 24px;
+  left: 56px;
+  width: 64px;
+  height: 64px;
+  z-index: 2;
+  background-size: 64px;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: center center;
+  border-radius: 64px;
+}
+
+.xl-chrome-ext-footer__name {
+  color: var(--font-font-1, #212429);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Body/body 1 */
+  font-size: 14px;
+  line-height: 22px;
+  white-space: nowrap;
+  width: 224px;
+}

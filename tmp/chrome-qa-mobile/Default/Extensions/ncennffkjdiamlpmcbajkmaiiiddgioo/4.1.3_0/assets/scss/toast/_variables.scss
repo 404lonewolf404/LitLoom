@@ -1,0 +1,12 @@
+$toast-icons-path: "./icons" !default;
+$toast-colors: () !default;
+$toast-colors: map-merge(
+  (
+    'success': #28a745,
+    'info': #17a2b8,
+    'warning': #ffc107,
+    'error': rgba(0, 0, 0, 0.90),
+    'default': #343a40,
+  ),
+  $toast-colors
+);

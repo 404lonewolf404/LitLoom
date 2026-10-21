@@ -1,0 +1,29 @@
+.metadata-assist{padding:12px;margin-bottom:15px;background:#f3f7f3;border:1px solid #e1e9e0;border-radius:8px}
+.metadata-assist-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.metadata-assist-head b{font-size:10px;color:#4f6856}
+.metadata-assist .field-area{min-height:68px;width:100%}
+.pdf-ingest-options{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.pdf-ingest-options .field-input{flex:1;min-width:180px}
+.pdf-upload-foot{padding:12px 0 0;border:0}
+.pdf-folder-setup,.pdf-job-section{border-top:1px solid #e9eee8;margin-top:17px;padding-top:3px}
+.pdf-folder-list,.pdf-ingest-jobs{display:grid;gap:8px}
+.pdf-folder-row,.pdf-ingest-job{padding:10px 11px;border:1px solid #e8eee7;background:#fff;border-radius:7px}
+.pdf-folder-row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.pdf-folder-row span{min-width:0;overflow-wrap:anywhere}
+.pdf-folder-row b{display:block;font-size:9px;color:#65736a;font-weight:600}
+.pdf-folder-row small{display:block;font-size:8px;line-height:1.6;color:#929d94;margin-top:3px}
+.pdf-ingest-job-head{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:9px;color:#647468}
+.pdf-ingest-job-head span{font-size:8px;color:#929d94;text-align:right}
+.pdf-ingest-job>.ai-job-progress{height:4px;margin:8px 0}
+.pdf-ingest-job-items{display:grid;gap:5px;margin-bottom:7px}
+.pdf-ingest-item{display:grid;grid-template-columns:7px minmax(90px,1fr) auto;gap:7px;align-items:center}
+.pdf-ingest-led{width:6px;height:6px;border-radius:50%;background:#a1aaa4}
+.pdf-ingest-led.running{background:#c68a45;box-shadow:0 0 0 3px #c68a4518}
+.pdf-ingest-led.success{background:#5f9870}
+.pdf-ingest-led.failed{background:#bd625b}
+.pdf-ingest-name{font-size:8px;color:#66746a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdf-ingest-item-state{font-size:8px;color:#929d94}
+.pdf-ingest-error{grid-column:2/-1;color:#ad625b;font-size:8px;line-height:1.5;overflow-wrap:anywhere}
+.pdf-ingest-empty{padding:12px;color:#98a299;font-size:9px;text-align:center}
+.pdf-ingest-job>.button{margin-top:7px}
+@media(max-width:560px){.pdf-ingest-item{grid-template-columns:7px minmax(0,1fr)}.pdf-ingest-item-state{grid-column:2}.pdf-folder-row{align-items:flex-start}.metadata-assist-head{align-items:flex-start}.pdf-ingest-job-head{align-items:flex-start;flex-direction:column;gap:3px}}

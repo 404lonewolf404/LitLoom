@@ -4,25 +4,39 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8f6">
-  <title>研读 · 研究生论文工作台</title>
+  <title>LitLoom · 研究生论文工作台</title>
+  <link rel="icon" type="image/png" href="/static/litloom-icon.png">
   <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/pdf-import.css">
+  <link rel="stylesheet" href="/static/agent-autonomy.css">
+  <link rel="stylesheet" href="/static/study.css">
+  <link rel="stylesheet" href="/static/workspace.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand-lockup">
-        <div class="brand-mark"><span>研</span><i></i></div>
-        <div><div class="brand-name">研读 <span>RESEARCH DESK</span></div><div class="brand-sub">研究生论文工作台</div></div>
+        <img class="brand-wordmark" src="/static/litloom-wordmark.png" alt="LitLoom">
+        <img class="brand-symbol" src="/static/litloom-icon.png" alt="">
+        <div class="brand-sub">研究生论文工作台</div>
       </div>
       <div class="workspace-label">工作空间</div>
       <nav class="primary-nav" aria-label="主导航">
-        <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span><span>今日</span><span class="nav-tail">01</span></button>
-        <button class="nav-item" data-view="discover"><span class="nav-icon">⌕</span><span>发现论文</span></button>
-        <button class="nav-item" data-view="library"><span class="nav-icon">▤</span><span>文献库</span><span class="nav-count" id="nav-library-count">0</span></button>
-        <button class="nav-item" data-view="reading"><span class="nav-icon">◫</span><span>阅读台</span></button>
-        <button class="nav-item" data-view="automation"><span class="nav-icon">◷</span><span>自动追踪</span><span class="nav-dot"></span></button>
-        <button class="nav-item" data-view="analytics"><span class="nav-icon">◒</span><span>数据分析</span></button>
-        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span><span>系统设置</span></button>
+        <button class="nav-item active" data-view="home" aria-label="今日" title="今日"><span class="nav-icon">⌂</span><span>今日</span></button>
+        <button class="nav-item" data-view="discover" aria-label="发现论文" title="发现论文"><span class="nav-icon">⌕</span><span>发现论文</span></button>
+        <button class="nav-item" data-view="library" aria-label="文献库" title="文献库"><span class="nav-icon">▤</span><span>文献库</span><span class="nav-count" id="nav-library-count">0</span></button>
+        <button class="nav-item" data-view="reading" aria-label="阅读台" title="阅读台"><span class="nav-icon">◫</span><span>阅读台</span></button>
+        <button class="nav-item" data-view="deepread" aria-label="精读空间" title="精读空间"><span class="nav-icon">⌘</span><span>精读空间</span></button>
+        <button class="nav-item" data-view="automation" aria-label="自动追踪" title="自动追踪"><span class="nav-icon">◷</span><span>自动追踪</span><span class="nav-dot"></span></button>
+        <details class="nav-more" id="nav-more">
+          <summary aria-label="更多工具" title="更多工具：读前知识、研究 Agent、数据分析"><span class="nav-icon">···</span><span>更多工具</span><span class="nav-tail">⌄</span></summary>
+          <div class="nav-more-items">
+            <button class="nav-item" data-view="prereading" aria-label="读前知识" title="读前知识"><span class="nav-icon">⌁</span><span>读前知识</span></button>
+            <button class="nav-item" data-view="agents" aria-label="研究 Agent" title="研究 Agent"><span class="nav-icon">✦</span><span>研究 Agent</span></button>
+            <button class="nav-item" data-view="analytics" aria-label="数据分析" title="数据分析"><span class="nav-icon">◒</span><span>数据分析</span></button>
+          </div>
+        </details>
+        <button class="nav-item" data-view="settings" aria-label="系统设置" title="系统设置"><span class="nav-icon">⚙</span><span>设置</span></button>
       </nav>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section-heading"><span>我的研究主题</span><button class="plain-icon" id="add-topic-shortcut" title="创建追踪主题">＋</button></div>
@@ -40,19 +54,32 @@
         <div class="breadcrumbs"><span>我的研究空间</span><span class="crumb-sep">/</span><b id="crumb-current">今日</b></div>
         <div class="top-actions">
           <label class="global-search"><span>⌕</span><input id="global-search" type="search" placeholder="搜索标题、作者、关键词…"><kbd>⌘ K</kbd></label>
+          <select id="workspace-switcher" class="workspace-switcher" aria-label="切换工作区" hidden></select>
           <button class="button small model-api-shortcut" type="button" data-action="agent-config" title="打开模型 API 设置">模型 API</button>
           <button class="icon-button" id="help-button" title="工作台状态">ⓘ</button>
+          <button class="button small" id="auth-account-button" data-action="auth-logout" hidden title="退出当前团队账号">退出</button>
           <button class="avatar avatar-small" title="个人研究空间">研</button>
         </div>
       </header>
       <div id="global-task-status" class="global-task-status" aria-live="polite"></div>
       <div class="content-wrap">
-        <div id="app-view" aria-live="polite"></div>
+        <div id="app-view" aria-live="polite">
+          <div class="initial-loading" role="status" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <div><b>正在载入研究空间</b><small>正在恢复你的论文、任务和阅读进度…</small></div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
+  <div id="auth-root"></div>
   <div id="modal-root"></div>
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
   <script src="/static/app.js" defer></script>
+  <script src="/static/js/views.js" defer></script>
+  <script src="/static/js/discovery.js" defer></script>
+  <script src="/static/js/library.js" defer></script>
+  <script src="/static/js/reader.js" defer></script>
+  <script src="/static/js/actions.js" defer></script>
 </body>
 </html>

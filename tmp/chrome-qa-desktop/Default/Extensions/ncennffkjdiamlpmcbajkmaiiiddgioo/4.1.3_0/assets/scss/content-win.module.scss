@@ -1,0 +1,19 @@
+.content-wrapper {
+  .xl-chrome-ext-bar-toast {
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+  }
+}
+
+.options-wrapper {
+  display: flex;
+  height: 32px;
+  border-radius: var(--border-radius-m, 8px);
+  background: var(--white-white-900, #fff);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0px 2px 0px 4px;
+  gap: 2px;
+}

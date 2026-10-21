@@ -1,2 +1,2 @@
 [console_scripts]
-literature-desk = app:main
+litloom = app:main

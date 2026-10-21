@@ -1,0 +1,6 @@
+LitLoom 已启动：http://127.0.0.1:8772
+本地数据目录：C:\Users\lonewolf\Desktop\多模态\研究生论文工作台\data
+{"ts": "2026-10-20T19:20:45+00:00", "level": "info", "request_id": "18b1962d7645", "client": "127.0.0.1", "duration_ms": 3062.88, "message": "\"GET /api/health HTTP/1.1\" 200 -"}
+{"ts": "2026-10-20T19:20:52+00:00", "level": "info", "request_id": "36c45b5ddd01", "client": "127.0.0.1", "duration_ms": 4.06, "message": "\"GET /static/app.js HTTP/1.1\" 200 -"}
+{"ts": "2026-10-20T19:20:52+00:00", "level": "info", "request_id": "91ff52ebf485", "client": "127.0.0.1", "duration_ms": 1.33, "message": "\"GET / HTTP/1.1\" 200 -"}
+{"ts": "2026-10-20T19:27:46+00:00", "level": "info", "request_id": "02f346168b06", "client": "127.0.0.1", "duration_ms": 2062.58, "message": "\"GET /api/health HTTP/1.1\" 200 -"}
