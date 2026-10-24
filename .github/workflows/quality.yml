@@ -25,7 +25,7 @@ jobs:
           LITLOOM_DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/litloom
           LITLOOM_AUTH_MODE: team
           LITLOOM_TENANT_MODE: shared
-          LITERATURE_RELEASE_CHANNEL: stable
+          LITLOOM_RELEASE_CHANNEL: stable
           LITERATURE_AUTO_BACKUP_HOURS: "24"
         run: .\scripts\verify.ps1 -Stage RuntimeConfig
       - name: Check Python syntax
