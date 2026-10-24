@@ -20,14 +20,14 @@ jobs:
         run: .\scripts\verify.ps1 -Stage SecretFiles
       - name: Check runtime configuration
         shell: pwsh
-        env:
-          LITERATURE_HOST: 127.0.0.1
-          LITLOOM_DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/litloom
-          LITLOOM_AUTH_MODE: team
-          LITLOOM_TENANT_MODE: shared
-          LITLOOM_RELEASE_CHANNEL: stable
-          LITERATURE_AUTO_BACKUP_HOURS: "24"
-        run: .\scripts\verify.ps1 -Stage RuntimeConfig
+        run: |
+          $env:LITERATURE_HOST = "127.0.0.1"
+          $env:LITLOOM_DATABASE_URL = "postgresql://ci:ci@127.0.0.1:5432/litloom"
+          $env:LITLOOM_AUTH_MODE = "team"
+          $env:LITLOOM_TENANT_MODE = "shared"
+          $env:LITLOOM_RELEASE_CHANNEL = "stable"
+          $env:LITERATURE_AUTO_BACKUP_HOURS = "24"
+          .\scripts\verify.ps1 -Stage RuntimeConfig
       - name: Check Python syntax
         shell: pwsh
         run: .\scripts\verify.ps1 -Stage PythonSyntax
