@@ -15,9 +15,24 @@ jobs:
       - name: Install project and test dependencies
         shell: pwsh
         run: python -m pip install -e ".[pdf,vision,mcp]"
-      - name: Verify Python and browser bundle
+      - name: Check tracked environment files
         shell: pwsh
-        run: .\scripts\verify.ps1
+        run: .\scripts\verify.ps1 -Stage SecretFiles
+      - name: Check runtime configuration
+        shell: pwsh
+        run: .\scripts\verify.ps1 -Stage RuntimeConfig
+      - name: Check Python syntax
+        shell: pwsh
+        run: .\scripts\verify.ps1 -Stage PythonSyntax
+      - name: Check JavaScript syntax
+        shell: pwsh
+        run: .\scripts\verify.ps1 -Stage JavaScriptSyntax
+      - name: Check API contract files
+        shell: pwsh
+        run: .\scripts\verify.ps1 -Stage Contracts
+      - name: Run unit and integration tests
+        shell: pwsh
+        run: .\scripts\verify.ps1 -Stage Tests
       - name: Build distributable wheel
         shell: pwsh
         run: |
