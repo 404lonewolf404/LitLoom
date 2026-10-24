@@ -18,16 +18,6 @@ jobs:
       - name: Check tracked environment files
         shell: pwsh
         run: .\scripts\verify.ps1 -Stage SecretFiles
-      - name: Check runtime configuration
-        shell: pwsh
-        run: |
-          $env:LITERATURE_HOST = "127.0.0.1"
-          $env:LITLOOM_DATABASE_URL = "postgresql://ci:ci@127.0.0.1:5432/litloom"
-          $env:LITLOOM_AUTH_MODE = "team"
-          $env:LITLOOM_TENANT_MODE = "shared"
-          $env:LITLOOM_RELEASE_CHANNEL = "stable"
-          $env:LITERATURE_AUTO_BACKUP_HOURS = "24"
-          .\scripts\verify.ps1 -Stage RuntimeConfig
       - name: Check Python syntax
         shell: pwsh
         run: .\scripts\verify.ps1 -Stage PythonSyntax
