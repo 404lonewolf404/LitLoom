@@ -8,7 +8,19 @@ if ($trackedEnvFiles) {
 }
 
 Write-Host "[2/6] Runtime configuration"
-python .\scripts\doctor.py --strict
+$previousDatabaseUrl = $env:LITLOOM_DATABASE_URL
+try {
+    if (-not $env:LITLOOM_DATABASE_URL) {
+        $env:LITLOOM_DATABASE_URL = "postgresql://ci:ci@127.0.0.1:5432/litloom"
+    }
+    python .\scripts\doctor.py --strict
+} finally {
+    if ($null -eq $previousDatabaseUrl) {
+        Remove-Item Env:LITLOOM_DATABASE_URL -ErrorAction SilentlyContinue
+    } else {
+        $env:LITLOOM_DATABASE_URL = $previousDatabaseUrl
+    }
+}
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "[3/6] Python syntax"
