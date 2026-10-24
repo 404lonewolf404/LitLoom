@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: LitLoom API
-  version: 0.19.0
+  version: 0.20.0
   description: Local-first, auditable LitLoom API for paper discovery, reading memory, analytics, and OpenAI-compatible model assistance.
 servers:
   - url: http://127.0.0.1:8765
@@ -872,6 +872,43 @@ paths:
       responses:
         '200': {description: Provider accepted a minimal inference request}
         '502': {description: Provider unavailable or rejected the key; error includes the endpoint and HTTP status}
+  /api/agent/framework:
+    get:
+      summary: Read Agent framework availability
+      responses:
+        '200': {description: LangChain/LangGraph availability and tool count}
+  /api/agent/status:
+    get:
+      summary: Read current user's Agent and model readiness
+      responses:
+        '200': {description: Non-secret model settings and Agent runtime status}
+  /api/agent/autonomous:
+    post:
+      summary: Run a bounded autonomous tool-using Agent
+      description: The Agent chooses from audited LangChain tools, respects confirmation boundaries, and persists its run, steps, tool calls, and artifacts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [objective]
+              properties:
+                objective: {type: string, minLength: 8, maxLength: 12000}
+                context: {type: object}
+                max_steps: {type: integer, minimum: 1, maximum: 12, default: 6}
+                confirm: {type: boolean, default: false}
+      responses:
+        '200': {description: Completed result or a confirmation request with a durable run_id}
+        '400': {description: Invalid objective or Agent execution failure}
+  /api/agent/runs/{run_id}:
+    get:
+      summary: Read a persisted autonomous Agent run
+      parameters:
+        - {name: run_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Run, steps, tool calls, and artifacts}
+        '404': {description: Run not found}
   /api/papers/{paperId}/references/sync:
     post:
       summary: Idempotently sync OpenAlex reference identifiers for a DOI paper

@@ -5,6 +5,11 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from contextlib import contextmanager
 import sqlite3
+import threading
+
+
+_USER_MODEL_SEMAPHORES: dict[str, threading.BoundedSemaphore] = {}
+_USER_MODEL_SEMAPHORES_LOCK = threading.RLock()
 
 from .services import app_services as _services
 
@@ -17,6 +22,14 @@ def _model_request_slot():
     HTTP request, including a compatibility retry, and is released even when
     a provider raises or the user cancels the job.
     """
+    scope_key = _model_scope_key()
+    if scope_key != "local":
+        with _USER_MODEL_SEMAPHORES_LOCK:
+            if scope_key not in _USER_MODEL_SEMAPHORES:
+                _USER_MODEL_SEMAPHORES[scope_key] = _services().threading.BoundedSemaphore(
+                    _services().MODEL_CONCURRENCY
+                )
+            return _USER_MODEL_SEMAPHORES[scope_key]
     with _services().MODEL_REQUEST_SEMAPHORE_LOCK:
         if _services().MODEL_REQUEST_SEMAPHORE is None:
             _services().MODEL_REQUEST_SEMAPHORE = (
@@ -231,11 +244,84 @@ def local_model_key_path() -> Path:
     survives source updates while remaining outside the tracked code tree.
     """
     configured = _services().os.environ.get("LIT_AGENT_API_KEY_FILE", "").strip()
+    actor = _services().AUTH_ACTOR.get()
+    user_id = _services().clean_text((actor or {}).get("user_id", ""), 120)
+    workspace_id = _services().clean_text((actor or {}).get("workspace_id", ""), 120)
+    if not user_id:
+        return (
+            _services().Path(configured).expanduser()
+            if configured
+            else _services().DATA_DIR / "model-secret.json"
+        )
+    # Environment-file secrets remain a deployment-wide fallback. Keys saved
+    # from the UI always live in a user/workspace directory, so two members
+    # cannot overwrite each other's credentials.
+    root = _services().DATA_DIR / "model-secrets"
+    return root / _safe_scope_part(workspace_id or "default") / _safe_scope_part(user_id) / "model-secret.json"
+
+
+def _legacy_local_model_key_path() -> Path:
+    """Return the pre-isolation deployment key path for one-time fallback."""
+    configured = _services().os.environ.get("LIT_AGENT_API_KEY_FILE", "").strip()
     return (
         _services().Path(configured).expanduser()
         if configured
         else _services().DATA_DIR / "model-secret.json"
     )
+
+
+def _safe_scope_part(value: str) -> str:
+    cleaned = "".join(char if char.isalnum() or char in {"-", "_", "."} else "_" for char in str(value))
+    return cleaned[:120] or "default"
+
+
+def _model_scope() -> tuple[str, str]:
+    """Return the authenticated workspace/member scope for model state."""
+    actor = _services().AUTH_ACTOR.get() or {}
+    user_id = _services().clean_text(actor.get("user_id", ""), 120)
+    workspace_id = _services().clean_text(actor.get("workspace_id", ""), 120)
+    return workspace_id, user_id
+
+
+def _model_scope_key() -> str:
+    workspace_id, user_id = _model_scope()
+    return f"{workspace_id}:{user_id}" if user_id else "local"
+
+
+def _model_config_row(db):
+    """Load only the active member's config when a team session is present.
+
+    The legacy singleton row remains available to single-user deployments,
+    but must not leak one member's endpoint or model into another member's
+    settings. A member without a saved row falls back to explicit deployment
+    environment defaults in ``model_settings`` instead.
+    """
+    workspace_id, user_id = _model_scope()
+    if user_id:
+        scoped = db.execute(
+            "SELECT * FROM user_model_configs WHERE workspace_id=? AND user_id=?",
+            (workspace_id, user_id),
+        ).fetchone()
+        return scoped
+    return db.execute("SELECT * FROM model_config WHERE id=1").fetchone()
+
+
+_SCOPED_RUNTIME_KEYS: dict[str, str] = {}
+_SCOPED_RUNTIME_KEYS_LOCK = threading.RLock()
+
+
+def _set_scoped_runtime_key(value: str) -> None:
+    if not any(_model_scope()):
+        return
+    with _SCOPED_RUNTIME_KEYS_LOCK:
+        _SCOPED_RUNTIME_KEYS[_model_scope_key()] = value
+
+
+def _scoped_runtime_key() -> str:
+    if not any(_model_scope()):
+        return ""
+    with _SCOPED_RUNTIME_KEYS_LOCK:
+        return _SCOPED_RUNTIME_KEYS.get(_model_scope_key(), "")
 
 
 def read_local_model_key() -> str:
@@ -246,6 +332,11 @@ def read_local_model_key() -> str:
     bounded and its contents never leave this process.
     """
     path = _services().local_model_key_path()
+    return _read_model_key_file(path)
+
+
+def _read_model_key_file(path: Path) -> str:
+    """Read one bounded secret file without exposing its contents."""
     try:
         if not path.is_file() or path.stat().st_size > 64 * 1024:
             return ""
@@ -312,11 +403,21 @@ def clear_local_model_key() -> None:
 
 def model_api_key_details() -> tuple[str, str]:
     """Resolve the key and its source without exposing the key to callers."""
-    if _services().RUNTIME_MODEL_KEY:
+    scoped_runtime_key = _scoped_runtime_key()
+    if scoped_runtime_key:
+        return scoped_runtime_key, "当前用户进程"
+    # Preserve the legacy process key for single-user deployments and tests.
+    if not any(_model_scope()) and _services().RUNTIME_MODEL_KEY:
         return _services().RUNTIME_MODEL_KEY, "当前进程"
     local_key = _services().read_local_model_key()
     if local_key:
         return local_key, "本地配置文件"
+    if any(_model_scope()):
+        legacy_path = _legacy_local_model_key_path()
+        if legacy_path != _services().local_model_key_path():
+            inherited = _read_model_key_file(legacy_path)
+            if inherited:
+                return inherited, "部署默认配置"
     env_key = _services().os.environ.get("LIT_AGENT_API_KEY", "").strip()
     if env_key:
         return env_key, "环境变量"
@@ -348,7 +449,7 @@ def model_endpoint_warning(api_url: str, protocol: str) -> str:
 def model_settings() -> dict:
     """Return OpenAI-compatible settings without ever returning the secret."""
     with _services().DB_LOCK, _services().db_session() as db:
-        row = db.execute("SELECT * FROM model_config WHERE id=1").fetchone()
+        row = _model_config_row(db)
     env_key = _services().os.environ.get("LIT_AGENT_API_KEY", "")
     has_saved = bool(row and row["updated_at"])
     # Do not silently bind an unconfigured installation to the OpenAI domain.
@@ -442,6 +543,8 @@ def model_settings() -> dict:
     # restart when the default data/model-secret.json is being used.
     try:
         key_file_configured = _services().local_model_key_path().is_file()
+        if not key_file_configured and any(_model_scope()):
+            key_file_configured = _legacy_local_model_key_path().is_file()
     except OSError:
         key_file_configured = False
     return {
@@ -510,13 +613,11 @@ def save_model_settings(data: dict) -> dict:
         }:
             raise ValueError("非本机 API 服务请使用 HTTPS")
     with _services().DB_LOCK, _services().db_session() as db:
-        current_embedding = db.execute(
-            "SELECT embedding_model,embedding_api_url,fast_model,analysis_model,vision_model,deepseek_search_enabled,deepseek_search_api_url,deepseek_fetch_api_url FROM model_config WHERE id=1"
-        ).fetchone()
+        current_embedding = _model_config_row(db)
     embedding_model = _services().clean_text(
         data.get(
             "embedding_model",
-            current_embedding["embedding_model"] if current_embedding else "",
+            current_embedding["embedding_model"] if current_embedding and "embedding_model" in current_embedding.keys() else "",
         ),
         200,
     )
@@ -524,7 +625,7 @@ def save_model_settings(data: dict) -> dict:
         str(
             data.get(
                 "embedding_api_url",
-                current_embedding["embedding_api_url"] if current_embedding else "",
+                current_embedding["embedding_api_url"] if current_embedding and "embedding_api_url" in current_embedding.keys() else "",
             )
         )
         .strip()
@@ -532,13 +633,13 @@ def save_model_settings(data: dict) -> dict:
     )
     route_models = {
         name: _services().clean_text(
-            data.get(name, current_embedding[name] if current_embedding else ""), 200
+            data.get(name, current_embedding[name] if current_embedding and name in current_embedding.keys() else ""), 200
         )
         for name in ("fast_model", "analysis_model", "vision_model")
     }
     deepseek_search_enabled = int(bool(data.get(
         "deepseek_search_enabled",
-        current_embedding["deepseek_search_enabled"] if current_embedding and "deepseek_search_enabled" in current_embedding.keys() else False,
+            current_embedding["deepseek_search_enabled"] if current_embedding and "deepseek_search_enabled" in current_embedding.keys() else False,
     )))
     deepseek_search_api_url = _services().clean_text(data.get(
         "deepseek_search_api_url",
@@ -605,9 +706,7 @@ def save_model_settings(data: dict) -> dict:
     )
     if _services().model_api_key() and not supplied_api_key and not explicit_key_clear:
         with _services().DB_LOCK, _services().db_session() as db:
-            current = db.execute(
-                "SELECT provider FROM model_config WHERE id=1"
-            ).fetchone()
+            current = _model_config_row(db)
         current_provider = (
             _services().clean_text(current["provider"], 120) if current else "自定义"
         )
@@ -617,43 +716,76 @@ def save_model_settings(data: dict) -> dict:
             )
     if "api_key" in data:
         if supplied_api_key:
-            _services().RUNTIME_MODEL_KEY = supplied_api_key
+            _set_scoped_runtime_key(supplied_api_key)
+            if not any(_model_scope()):
+                _services().RUNTIME_MODEL_KEY = supplied_api_key
             if data.get("persist_api_key", True) is not False:
                 _services().write_local_model_key(supplied_api_key)
             else:
                 _services().clear_local_model_key()
         elif data.get("clear_api_key"):
-            _services().RUNTIME_MODEL_KEY = ""
+            _set_scoped_runtime_key("")
+            if not any(_model_scope()):
+                _services().RUNTIME_MODEL_KEY = ""
             _services().clear_local_model_key()
     enabled = int(bool(data.get("enabled", True)))
+    now = _services().now_iso()
+    workspace_id, user_id = _model_scope()
     with _services().DB_LOCK, _services().db_session() as db:
-        db.execute(
-            "UPDATE model_config SET provider=?,base_url=?,website_url=?,api_url=?,protocol=?,model=?,fast_model=?,analysis_model=?,vision_model=?,temperature=?,embedding_model=?,embedding_api_url=?,deepseek_search_enabled=?,deepseek_search_api_url=?,deepseek_fetch_api_url=?,enabled=?,updated_at=? WHERE id=1",
-            (
-                provider,
-                base_url,
-                website_url,
-                api_url,
-                protocol,
-                model,
-                route_models["fast_model"],
-                route_models["analysis_model"],
-                route_models["vision_model"],
-                temperature,
-                embedding_model,
-                embedding_api_url,
-                deepseek_search_enabled,
-                deepseek_search_api_url,
-                deepseek_fetch_api_url,
-                enabled,
-                _services().now_iso(),
-            ),
+        values = (
+            provider,
+            base_url,
+            website_url,
+            api_url,
+            protocol,
+            model,
+            route_models["fast_model"],
+            route_models["analysis_model"],
+            route_models["vision_model"],
+            temperature,
+            embedding_model,
+            embedding_api_url,
+            deepseek_search_enabled,
+            deepseek_search_api_url,
+            deepseek_fetch_api_url,
+            enabled,
+            now,
         )
+        if user_id:
+            scope_key = f"{workspace_id}:{user_id}"
+            db.execute(
+                """INSERT INTO user_model_configs(
+                    scope_key,workspace_id,user_id,provider,base_url,website_url,api_url,
+                    protocol,model,fast_model,analysis_model,vision_model,temperature,
+                    embedding_model,embedding_api_url,deepseek_search_enabled,
+                    deepseek_search_api_url,deepseek_fetch_api_url,enabled,updated_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(workspace_id,user_id) DO UPDATE SET
+                    provider=excluded.provider,base_url=excluded.base_url,
+                    website_url=excluded.website_url,api_url=excluded.api_url,
+                    protocol=excluded.protocol,model=excluded.model,
+                    fast_model=excluded.fast_model,analysis_model=excluded.analysis_model,
+                    vision_model=excluded.vision_model,temperature=excluded.temperature,
+                    embedding_model=excluded.embedding_model,
+                    embedding_api_url=excluded.embedding_api_url,
+                    deepseek_search_enabled=excluded.deepseek_search_enabled,
+                    deepseek_search_api_url=excluded.deepseek_search_api_url,
+                    deepseek_fetch_api_url=excluded.deepseek_fetch_api_url,
+                    enabled=excluded.enabled,updated_at=excluded.updated_at""",
+                (scope_key, workspace_id, user_id, *values),
+            )
+            audit_entity = scope_key
+        else:
+            db.execute(
+                "UPDATE model_config SET provider=?,base_url=?,website_url=?,api_url=?,protocol=?,model=?,fast_model=?,analysis_model=?,vision_model=?,temperature=?,embedding_model=?,embedding_api_url=?,deepseek_search_enabled=?,deepseek_search_api_url=?,deepseek_fetch_api_url=?,enabled=?,updated_at=? WHERE id=1",
+                values,
+            )
+            audit_entity = "1"
         _services().record_audit(
             db,
             "model.settings.updated",
             "model_config",
-            "1",
+            audit_entity,
             {
                 "provider": provider,
                 "base_url": base_url,
@@ -737,10 +869,39 @@ def read_model_first_token(response, timeout: int | None = None) -> tuple[str, b
     return "", True
 
 
-def test_model_connection(deep: bool = False) -> dict:
+def _model_probe_settings(settings_override: dict | None = None) -> tuple[dict, str]:
+    """Resolve probe settings without persisting values from the form.
+
+    The configuration dialog can test a newly typed endpoint before saving it.
+    Keeping this path separate from ``save_model_settings`` prevents a stale
+    session or a failed database write from hiding a perfectly healthy model
+    endpoint, while the API key is used only for this single request.
+    """
+    settings = dict(_services().model_settings())
+    override = settings_override if isinstance(settings_override, dict) else {}
+    allowed = {
+        "provider", "base_url", "website_url", "api_url", "protocol", "model",
+        "temperature", "fast_model", "analysis_model", "vision_model",
+    }
+    for key in allowed:
+        if key in override and override[key] is not None:
+            value = str(override[key]).strip()
+            if key == "protocol":
+                value = value if value in {"chat_completions", "responses"} else settings.get(key, "chat_completions")
+            settings[key] = value
+    api_key = str(override.get("api_key") or "").strip()
+    if not api_key:
+        api_key = _services().model_api_key()
+    settings["api_key_set"] = bool(api_key)
+    return settings, api_key
+
+
+def test_model_connection(
+    deep: bool = False, settings_override: dict | None = None
+) -> dict:
     started = _services().time.perf_counter()
-    settings = _services().model_settings()
-    if not settings["api_key_set"]:
+    settings, api_key = _model_probe_settings(settings_override)
+    if not api_key:
         raise ValueError("尚未配置 API Key")
     # A quick catalog probe is used by the UI when the provider exposes
     # /models. Callers can request deep=True for an actual generation probe.
@@ -749,7 +910,7 @@ def test_model_connection(deep: bool = False) -> dict:
         req = _services().Request(
             models_url,
             headers={
-                "Authorization": "Bearer " + _services().model_api_key(),
+                "Authorization": "Bearer " + api_key,
                 "Accept": "application/json",
                 "User-Agent": _services().USER_AGENT,
             },
@@ -796,7 +957,6 @@ def test_model_connection(deep: bool = False) -> dict:
                 ),
                 "stream": False,
             }
-    api_key = _services().model_api_key()
     payload = (
         {
             "model": settings["model"],

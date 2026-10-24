@@ -6,11 +6,11 @@
 
 先把需求写成行为和指标：例如“减少长期主题的重复结果”对应 `seen_before`、`query_matches.seen_count`、`suppressed_count` 和重复率；“提高排序质量”对应明确的相关/忽略样本和 Precision@5/10。不要用页面截图替代验收条件。
 
-多人平台和全文论文分析的目标代码边界、迁移顺序、租户隔离测试与证据质量门槛见 [`MULTIUSER_PLATFORM_DESIGN.md`](MULTIUSER_PLATFORM_DESIGN.md)。在阶段 A 完成模块化和契约测试前，不要直接把真实 SQLite 数据库改造成多人共享库。
+运行数据使用 PostgreSQL；旧 SQLite 仅能通过显式迁移工具导入，不能在启动时自动切换或导入。FastAPI 原生路由位于 `literature_desk/api/`，尚未迁移的历史路由由兼容桥承接。
 
 当前代码按领域放在 `literature_desk/`：`workspaces.py` 和 `database.py` 管理身份/持久化边界，`library.py` 管理文献记录，`documents.py` 与 `paper_analysis.py` 管理 PDF 和阅读分析，`providers.py` 与 `discovery.py` 管理来源检索及候选编排，`jobs.py` 管理后台任务，`research_agents.py` 管理目标工作流，`web/handler.py` 管理 HTTP 适配。`app.py` 只保留运行时配置、启动逻辑与旧 API 兼容导出。不要让领域模块反向 `import app`；历史依赖暂经 `literature_desk.services` 兼容绑定，新增代码优先通过函数参数或小型端口传递依赖。
 
-企业工程边界、项目目录和发布决策分别见 [`CONTRIBUTING.md`](CONTRIBUTING.md)、[`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) 和 [`docs/ENGINEERING_PLAYBOOK.md`](docs/ENGINEERING_PLAYBOOK.md)。配置诊断使用 `scripts/doctor.ps1`；API 错误统一保留 `error`，并提供 `error_code`、`retryable`、`request_id`，契约见 `openapi.yaml` 的 `ErrorResponse`。
+项目目录和发布决策见 [`ARCHITECTURE.md`](ARCHITECTURE.md)。配置诊断使用 `scripts/doctor.ps1`；API 错误统一保留 `error`，并提供 `error_code`、`retryable`、`request_id`，契约见 `openapi.yaml` 的 `ErrorResponse`。
 
 ## 2. Baseline 与实现
 
@@ -26,7 +26,7 @@
 python -m build --wheel --no-isolation
 ```
 
-质量门禁覆盖 Python 编译、JavaScript 语法、单元测试、HTTP 集成测试、备份恢复和敏感信息边界。GitHub Actions 在 push 和 pull request 上执行同一门禁。
+质量门禁覆盖 Python 编译、JavaScript 语法、单元测试、HTTP 集成测试、备份恢复和隐私信息边界。GitHub Actions 在 push 和 pull request 上执行同一门禁。
 
 ## 4. 运行时检查
 
@@ -60,8 +60,7 @@ Invoke-RestMethod http://127.0.0.1:8765/api/metrics
 
 ## 7. 面试可讲的证据
 
-- 需求：`需求分析.md`
-- 架构取舍：`ADR.md`、`ARCHITECTURE.md`
-- 指标与动作：`/api/analytics`、数据分析页、`OPERATIONS.md`
+- 需求与架构取舍：`README.md`、`ARCHITECTURE.md`
+- 指标与动作：`/api/analytics`、数据分析页
 - 质量：`tests/test_app.py`、`scripts/verify.ps1`、`.github/workflows/quality.yml`
-- 发布：`CHANGELOG.md`、wheel 构建、健康检查和备份恢复
+- 发布：wheel 构建、健康检查和备份恢复

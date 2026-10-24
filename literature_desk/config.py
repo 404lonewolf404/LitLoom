@@ -205,9 +205,29 @@ class RuntimeConfig:
         if not self.database_url_configured:
             findings.append(
                 {
-                    "severity": "warning",
+                    "severity": "error",
                     "code": "database_url_missing",
-                    "message": "未设置 LITLOOM_DATABASE_URL，将使用兼容后端或本地默认配置。",
+                    "message": "未设置 LITLOOM_DATABASE_URL；LitLoom 运行必须连接 PostgreSQL。",
+                }
+            )
+        if self.auth_mode.casefold() in {"single", "shared"} and self.database_url_configured:
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "auth_disabled",
+                    "message": "当前数据库服务未启用登录校验；多人使用前请设置 LITLOOM_AUTH_MODE=team。",
+                }
+            )
+        if (
+            self.auth_mode.casefold() == "team"
+            and self.tenant_mode.casefold() == "shared"
+            and postgres_backend is True
+        ):
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "shared_workspace_scope",
+                    "message": "PostgreSQL 当前是单个共享工作区：成员登录和角色已隔离，但论文、笔记、任务和 PDF 对该工作区成员共享。",
                 }
             )
         if not self.model_configured:

@@ -31,7 +31,7 @@ from urllib.request import Request, urlopen
 SERVER_NAME = "litloom"
 SERVER_VERSION = "0.1.0"
 PROTOCOL_VERSION = "2025-06-18"
-DEFAULT_BASE_URL = "http://127.0.0.1:8772"
+DEFAULT_BASE_URL = "http://127.0.0.1:8765"
 MAX_RESULT_CHARS = 80_000
 TERMINAL_SEARCH_STATES = {"success", "partial", "failed", "cancelled", "interrupted"}
 

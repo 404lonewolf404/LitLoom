@@ -7,6 +7,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 
 os.environ["LITLOOM_DATABASE_URL"] = ""
+os.environ["LITLOOM_TESTING"] = "1"
 import app
 from literature_desk.model_telemetry import endpoint_host, payload_text_chars, response_usage
 

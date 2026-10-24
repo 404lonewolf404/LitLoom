@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 os.environ["LITLOOM_DATABASE_URL"] = ""
+os.environ["LITLOOM_TESTING"] = "1"
 import app
 from literature_desk.model_router import resolve_model_route
 
@@ -78,6 +79,66 @@ class ModelRouterTests(unittest.TestCase):
         settings = resolve_model_route(saved, "vision")
         self.assertEqual(settings["model"], "vision-id")
         self.assertNotIn("fixture-secret", json.dumps(saved))
+
+    def test_team_members_get_isolated_model_settings(self):
+        actor_a = {"workspace_id": "workspace-a", "user_id": "user-a"}
+        actor_b = {"workspace_id": "workspace-a", "user_id": "user-b"}
+        token_a = app.AUTH_ACTOR.set(actor_a)
+        try:
+            saved_a = app.save_model_settings({
+                "provider": "provider-a",
+                "base_url": "https://a.example/v1",
+                "model": "model-a",
+                "api_key": "key-a",
+                "enabled": True,
+            })
+        finally:
+            app.AUTH_ACTOR.reset(token_a)
+        token_b = app.AUTH_ACTOR.set(actor_b)
+        try:
+            saved_b = app.save_model_settings({
+                "provider": "provider-b",
+                "base_url": "https://b.example/v1",
+                "model": "model-b",
+                "api_key": "key-b",
+                "enabled": True,
+            })
+            current_b = app.model_settings()
+        finally:
+            app.AUTH_ACTOR.reset(token_b)
+        token_a = app.AUTH_ACTOR.set(actor_a)
+        try:
+            current_a = app.model_settings()
+            self.assertEqual(current_a["model"], "model-a")
+            self.assertEqual(current_a["base_url"], "https://a.example/v1")
+            self.assertEqual(current_b["model"], "model-b")
+            self.assertEqual(saved_a["provider"], "provider-a")
+            self.assertEqual(saved_b["provider"], "provider-b")
+            self.assertNotEqual(app.model_api_key(), "key-b")
+        finally:
+            app.AUTH_ACTOR.reset(token_a)
+
+    def test_team_member_without_saved_row_does_not_inherit_legacy_endpoint(self):
+        app.save_model_settings({
+            "provider": "legacy-provider",
+            "base_url": "https://legacy.example/v1",
+            "model": "legacy-model",
+            "api_key": "legacy-key",
+            "enabled": True,
+        })
+        actor = {"workspace_id": "workspace-a", "user_id": "new-user"}
+        token = app.AUTH_ACTOR.set(actor)
+        try:
+            with patch.dict(os.environ, {
+                "LIT_AGENT_BASE_URL": "https://deployment.example/v1",
+                "LIT_AGENT_MODEL": "deployment-model",
+            }, clear=False):
+                settings = app.model_settings()
+            self.assertEqual(settings["base_url"], "https://deployment.example/v1")
+            self.assertEqual(settings["model"], "deployment-model")
+            self.assertNotEqual(settings["base_url"], "https://legacy.example/v1")
+        finally:
+            app.AUTH_ACTOR.reset(token)
 
 
 if __name__ == "__main__":

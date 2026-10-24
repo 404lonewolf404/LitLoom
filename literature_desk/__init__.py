@@ -7,6 +7,6 @@ place for domain validation.
 
 from .domain import PAPER_STATUSES, QUERY_DECISIONS, RECOMMENDATION_DECISIONS, SOURCE_NAMES
 
-__version__ = "0.19.0"
+__version__ = "0.20.0"
 
 __all__ = ["PAPER_STATUSES", "QUERY_DECISIONS", "RECOMMENDATION_DECISIONS", "SOURCE_NAMES", "__version__"]

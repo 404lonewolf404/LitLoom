@@ -1,8 +1,9 @@
-"""PostgreSQL DB-API compatibility for LitLoom's existing SQL call sites.
+"""SQLAlchemy-backed PostgreSQL access for LitLoom.
 
-SQLite remains the isolated test/import backend. Production PostgreSQL uses
-psycopg directly so transactions, constraints, and concurrency are handled by
-the database server rather than a process-local file lock.
+SQLAlchemy owns the production engine, connection pool, execution, and
+transactions. A small DB-API-shaped adapter keeps the existing domain SQL
+call sites stable while they are migrated deliberately. SQLite remains
+outside this module's runtime path.
 """
 
 from __future__ import annotations
@@ -13,8 +14,17 @@ import sqlite3
 import subprocess
 import time
 from pathlib import Path
+import threading
 from typing import Any
 from urllib.parse import urlsplit
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine, URL, make_url
+from sqlalchemy.exc import IntegrityError, OperationalError
+
+
+_POOL_LOCK = threading.RLock()
+_ENGINES: dict[str, Engine] = {}
 
 class Row(dict):
     """Mapping row that preserves SQLite's integer-position access pattern."""
@@ -23,15 +33,6 @@ class Row(dict):
         if isinstance(key, int):
             key = tuple(self.keys())[key]
         return super().__getitem__(key)
-
-
-def _row_factory(cursor):
-    names = tuple(column.name for column in cursor.description or ())
-
-    def build(values):
-        return Row(zip(names, values))
-
-    return build
 
 
 def _replace_qmarks(statement: str) -> str:
@@ -104,14 +105,14 @@ def _translate(statement: str) -> str:
 
 
 class Cursor:
-    def __init__(self, connection, cursor, statement: str):
+    def __init__(self, connection, result, statement: str):
         self._connection = connection
-        self._cursor = cursor
+        self._result = result
         self._statement = statement
 
     @property
     def rowcount(self):
-        return self._cursor.rowcount
+        return self._result.rowcount
 
     @property
     def lastrowid(self):
@@ -119,41 +120,47 @@ class Cursor:
         if not match:
             return None
         table = match.group(1).strip('"')
-        with self._connection._raw.cursor() as cursor:
-            cursor.execute(
-                "SELECT currval(pg_get_serial_sequence(%s, 'id'))",
-                (table,),
-            )
-            result = cursor.fetchone()
-            return result[0] if result else None
+        result = self._connection._connection.exec_driver_sql(
+            "SELECT currval(pg_get_serial_sequence(%s, 'id'))",
+            (table,),
+        )
+        value = result.scalar_one_or_none()
+        result.close()
+        return value
+
+    @staticmethod
+    def _row(row):
+        if row is None:
+            return None
+        mapping = getattr(row, "_mapping", None)
+        return Row(mapping.items() if mapping is not None else enumerate(row))
 
     def fetchone(self):
-        return self._cursor.fetchone()
+        return self._row(self._result.fetchone())
 
     def fetchall(self):
-        return self._cursor.fetchall()
+        return [self._row(row) for row in self._result.fetchall()]
 
     def fetchmany(self, size: int | None = None):
-        return self._cursor.fetchmany(size) if size else self._cursor.fetchmany()
+        rows = self._result.fetchmany(size) if size else self._result.fetchmany()
+        return [self._row(row) for row in rows]
 
     def __iter__(self):
-        return iter(self._cursor)
+        return (self._row(row) for row in self._result)
 
 
 class Connection:
-    def __init__(self, database_url: str):
+    """Small compatibility adapter over a SQLAlchemy Core connection."""
+
+    def __init__(self, engine: Engine):
         try:
-            import psycopg
-        except ImportError as exc:
+            self._connection = engine.connect()
+        except Exception as exc:
             raise RuntimeError(
-                "PostgreSQL 驱动未安装，请运行 python -m pip install -e '.[postgres]'"
+                "无法连接 PostgreSQL；请检查数据库服务和连接池配置"
             ) from exc
-        self._psycopg = psycopg
-        database_url = database_url.replace(
-            "postgresql+psycopg://", "postgresql://", 1
-        )
-        self._raw = psycopg.connect(database_url, row_factory=_row_factory)
         self._total_changes = 0
+        self._closed = False
 
     @property
     def total_changes(self) -> int:
@@ -161,39 +168,27 @@ class Connection:
 
     def execute(self, statement: str, parameters: Any = ()) -> Cursor:
         translated = _translate(statement)
-        cursor = self._raw.cursor()
         try:
-            cursor.execute(translated, parameters)
-        except self._psycopg.IntegrityError as exc:
-            cursor.close()
-            raise sqlite3.IntegrityError(str(exc)) from exc
-        except self._psycopg.OperationalError as exc:
-            cursor.close()
-            raise sqlite3.OperationalError(str(exc)) from exc
-        except Exception:
-            cursor.close()
-            raise
-        if cursor.rowcount > 0 and not translated.lstrip().upper().startswith("SELECT"):
-            self._total_changes += cursor.rowcount
-        return Cursor(self, cursor, statement)
+            result = self._connection.exec_driver_sql(translated, parameters)
+        except IntegrityError as exc:
+            raise sqlite3.IntegrityError(str(exc.orig)) from exc
+        except OperationalError as exc:
+            raise sqlite3.OperationalError(str(exc.orig)) from exc
+        if result.rowcount > 0 and not translated.lstrip().upper().startswith("SELECT"):
+            self._total_changes += result.rowcount
+        return Cursor(self, result, statement)
 
     def executemany(self, statement: str, parameter_rows) -> Cursor:
         translated = _translate(statement)
-        cursor = self._raw.cursor()
         try:
-            cursor.executemany(translated, parameter_rows)
-        except self._psycopg.IntegrityError as exc:
-            cursor.close()
-            raise sqlite3.IntegrityError(str(exc)) from exc
-        except self._psycopg.OperationalError as exc:
-            cursor.close()
-            raise sqlite3.OperationalError(str(exc)) from exc
-        except Exception:
-            cursor.close()
-            raise
-        if cursor.rowcount > 0:
-            self._total_changes += cursor.rowcount
-        return Cursor(self, cursor, statement)
+            result = self._connection.exec_driver_sql(translated, parameter_rows)
+        except IntegrityError as exc:
+            raise sqlite3.IntegrityError(str(exc.orig)) from exc
+        except OperationalError as exc:
+            raise sqlite3.OperationalError(str(exc.orig)) from exc
+        if result.rowcount > 0:
+            self._total_changes += result.rowcount
+        return Cursor(self, result, statement)
 
     def executescript(self, script: str) -> None:
         for statement in script.split(";"):
@@ -201,35 +196,120 @@ class Connection:
                 self.execute(statement)
 
     def commit(self):
-        self._raw.commit()
+        self._connection.commit()
 
     def rollback(self):
-        self._raw.rollback()
+        self._connection.rollback()
 
     def close(self):
-        self._raw.close()
+        if not self._closed:
+            self._closed = True
+            try:
+                if self._connection.in_transaction():
+                    self._connection.rollback()
+            except Exception:
+                pass
+            finally:
+                self._connection.close()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc, traceback):
-        if exc_type is None:
-            self.commit()
-        else:
-            self.rollback()
-        self.close()
+        try:
+            if exc_type is None:
+                self.commit()
+            else:
+                self.rollback()
+        finally:
+            self.close()
         return False
 
     @property
     def in_transaction(self) -> bool:
-        return (
-            self._raw.info.transaction_status
-            != self._psycopg.pq.TransactionStatus.IDLE
+        return self._connection.in_transaction()
+
+
+def _engine_for(database_url: str) -> Engine:
+    """Return the process-wide SQLAlchemy engine for a PostgreSQL URL."""
+    url = _sqlalchemy_url(database_url)
+    normalized = url.render_as_string(hide_password=False)
+    with _POOL_LOCK:
+        engine = _ENGINES.get(normalized)
+        if engine is not None:
+            return engine
+        max_size = _pool_size("LITLOOM_DB_POOL_MAX", 12, minimum=1, maximum=64)
+        timeout = _pool_timeout()
+        engine = create_engine(
+            url,
+            pool_size=max_size,
+            max_overflow=0,
+            pool_timeout=timeout,
+            pool_pre_ping=True,
+            connect_args={"connect_timeout": max(1, min(int(timeout), 30))},
         )
+        _ENGINES[normalized] = engine
+        return engine
+
+
+def _sqlalchemy_url(database_url: str) -> URL:
+    """Use psycopg 3 explicitly; SQLAlchemy otherwise defaults to psycopg2."""
+    url = make_url(database_url)
+    if url.drivername == "postgresql":
+        return url.set(drivername="postgresql+psycopg")
+    return url
+
+
+def _pool_size(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+def _pool_timeout() -> float:
+    try:
+        value = float(os.environ.get("LITLOOM_DB_POOL_TIMEOUT", "30"))
+    except (TypeError, ValueError):
+        value = 30.0
+    return max(1.0, min(300.0, value))
 
 
 def connect(database_url: str) -> Connection:
-    return Connection(database_url)
+    if not database_url or not database_url.startswith(
+        ("postgresql://", "postgresql+psycopg://")
+    ):
+        raise ValueError("PostgreSQL 连接地址无效")
+    return Connection(_engine_for(database_url))
+
+
+def close_pools() -> None:
+    """Close all process pools during an orderly application shutdown."""
+    with _POOL_LOCK:
+        engines = list(_ENGINES.values())
+        _ENGINES.clear()
+    for engine in engines:
+        engine.dispose()
+
+
+def pool_snapshot() -> dict:
+    """Expose pool sizing and health without exposing connection strings."""
+    with _POOL_LOCK:
+        engines = list(_ENGINES.values())
+    return {
+        "pool_count": len(engines),
+        "pools": [
+            {
+                "name": "litloom-postgres",
+                "size": pool.size(),
+                "available": pool.checkedin(),
+                "checked_out": pool.checkedout(),
+                "waiting": None,
+            }
+            for pool in (engine.pool for engine in engines)
+        ],
+    }
 
 
 def _postgres_client(name: str) -> Path:
@@ -254,19 +334,46 @@ def ensure_local_server(database_url: str) -> None:
     parsed = urlsplit(database_url)
     if parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
         return
+    data_dir = Path(os.environ.get("LITLOOM_POSTGRES_DATA_DIR", "")).expanduser()
+    if not data_dir.is_dir():
+        raise RuntimeError(
+            "PostgreSQL 无法连接，且本机数据目录未配置；检查 PostgreSQL 服务与 LITLOOM_DATABASE_URL"
+        )
+
+    def cluster_running() -> bool:
+        """Check the configured cluster, rather than any server on its port."""
+        try:
+            result = subprocess.run(
+                [str(_postgres_client("pg_ctl")), "status", "-D", str(data_dir)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=3,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+        return result.returncode == 0
+
     initial_error = None
     try:
         import psycopg
 
         with psycopg.connect(database_url, connect_timeout=2):
-            return
+            if cluster_running():
+                return
+            # A different PostgreSQL data directory can be listening on the
+            # configured port. Silently accepting it makes LitLoom appear to
+            # lose settings and papers after a restart, and can leave AI
+            # controls disabled when that server is recovering.
+            raise RuntimeError(
+                f"端口 {parsed.port or 5432} 已被另一套 PostgreSQL 数据目录占用；"
+                f"请停止占用该端口的实例，或将其数据目录设为 {data_dir}"
+            )
     except Exception as exc:
         initial_error = exc
-        data_dir = Path(os.environ.get("LITLOOM_POSTGRES_DATA_DIR", "")).expanduser()
-        if not data_dir.is_dir():
-            raise RuntimeError(
-                "PostgreSQL 无法连接，且本机数据目录未配置；检查 PostgreSQL 服务与 LITLOOM_DATABASE_URL"
-            ) from initial_error
+        if isinstance(exc, RuntimeError) and "另一套 PostgreSQL 数据目录" in str(exc):
+            raise
     log_path = data_dir.parent / "postgresql.log"
     process = subprocess.Popen(
         [
@@ -418,12 +525,15 @@ def apply_migrations(database_url: str) -> None:
         from alembic.config import Config
     except ImportError as exc:
         raise RuntimeError(
-            "PostgreSQL 迁移依赖未安装，请运行 python -m pip install -e '.[postgres]'"
+            "PostgreSQL 迁移依赖未安装，请运行 python -m pip install -e ."
         ) from exc
     migration_dir = Path(__file__).with_name("migrations")
     configuration = Config()
     configuration.set_main_option("script_location", str(migration_dir))
     configuration.set_main_option(
-        "sqlalchemy.url", database_url.replace("%", "%%")
+        "sqlalchemy.url",
+        _sqlalchemy_url(database_url).render_as_string(hide_password=False).replace(
+            "%", "%%"
+        ),
     )
     command.upgrade(configuration, "head")

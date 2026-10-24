@@ -2,17 +2,16 @@
 
 本项目是一个**本地优先、可持续积累的个人研究文献工作台**。把论文发现、阅读分诊、笔记、证据和来源记录放进同一个可导出/备份的资料库，按多年连续使用设计。平台将重复检索、去重、分页全文查询、阅读历史、自动追踪和运行维护交给系统，研究者保留最终判断权。
 
-详细产品边界、功能需求、验收标准与路线图见 [`需求分析.md`](需求分析.md)。工程决策、数据闭环和发布门槛见 [`ARCHITECTURE.md`](ARCHITECTURE.md)；成熟 Agent 项目、应用场景和中间件的适用边界见 [`AGENT_ECOSYSTEM.md`](AGENT_ECOSYSTEM.md)；多人平台、标准代码结构、租户隔离、论文分析和迁移方案见 [`MULTIUSER_PLATFORM_DESIGN.md`](MULTIUSER_PLATFORM_DESIGN.md)；实习项目演示路径见 [`PROJECT_SHOWCASE.md`](PROJECT_SHOWCASE.md)；运维、备份、质量门禁和故障处理见 [`OPERATIONS.md`](OPERATIONS.md)；安全边界见 [`SECURITY.md`](SECURITY.md)；版本变化见 [`CHANGELOG.md`](CHANGELOG.md)。
-工程架构、技术取舍、指标定义和发布质量门槛见 [`ARCHITECTURE.md`](ARCHITECTURE.md)；HTTP 契约见 [`openapi.yaml`](openapi.yaml)。
+工程架构、数据边界、Agent 能力和发布门槛见 [`ARCHITECTURE.md`](ARCHITECTURE.md)；开发、测试和发布流程见 [`DEVELOPMENT.md`](DEVELOPMENT.md)；HTTP 契约见 [`openapi.yaml`](openapi.yaml)。
 
-LitLoom 还提供可选的无依赖 MCP stdio 适配器，可让外部 Agent 调用论文检索、历史查询、逐页证据读取和持久化 AI 分析任务。网页端内部仍使用 OpenAI 兼容 Function Calling；两条链路共享同一套候选审阅、任务进度、失败重试和本地数据库规则。启动与工具边界见 [`MCP.md`](MCP.md)。
+LitLoom 还提供可选的无依赖 MCP stdio 适配器，可让外部 Agent 调用论文检索、历史查询、逐页证据读取和持久化 AI 分析任务。网页端内部使用 LangChain 工具适配和 LangGraph 决策循环；自主 Agent 的每一步会写入 PostgreSQL 的运行、步骤、工具调用和产物记录，刷新后仍可追踪。
 
 ## 快速启动（Windows）
 
-需要 Python 3.10+ 和 PostgreSQL 17。首次在新环境运行前安装 PostgreSQL 依赖：
+需要 Python 3.10+ 和 PostgreSQL 17。首次在新环境运行前安装项目依赖（包含 FastAPI、PostgreSQL 驱动和 LangGraph Agent）：
 
 ```powershell
-python -m pip install -e ".[postgres]"
+python -m pip install -e .
 ```
 
 ```powershell
@@ -26,9 +25,9 @@ python .\app.py
 
 需要作为可安装命令运行时，可在项目目录执行 `python -m pip install -e .`，之后使用 `litloom` 启动。PowerShell 启动脚本支持自定义端口和资料目录，示例：`.\run.ps1 -Port 8876 -DataDir D:\ResearchData`。
 
-PostgreSQL 保存论文、阅读卡、检索历史和任务等业务数据；PDF 与备份仍存放在 `LITERATURE_DATA_DIR` 指定的本地目录（默认项目目录下的 `data/`）。可在启动前把 `LITERATURE_DATA_DIR` 改到 OneDrive 外的自选目录，或设置 `LITERATURE_PORT` 更换端口。初次切换时，LitLoom 只会把现有 SQLite 数据迁入空 PostgreSQL 库；SQLite 源文件会保留，不会被删除。请勿把 `.env`、`data/` 或备份加入公开 Git 仓库。
+PostgreSQL 保存论文、阅读卡、检索历史和任务等业务数据；PDF 与备份仍存放在 `LITERATURE_DATA_DIR` 指定的本地目录（默认项目目录下的 `data/`）。可在启动前把 `LITERATURE_DATA_DIR` 改到 OneDrive 外的自选目录，或设置 `LITERATURE_PORT` 更换端口。LitLoom 运行必须提供 `LITLOOM_DATABASE_URL`，连接不上 PostgreSQL 时会明确停止，不会悄悄切到 SQLite。旧 SQLite 文件不参与启动或自动迁移；本机遗留文件已从项目数据目录移到 `%LOCALAPPDATA%\LitLoom\legacy-sqlite\` 留档。请勿把 `.env`、`data/` 或备份加入公开 Git 仓库。
 
-**数据库状态：**运行主库已切换为 PostgreSQL，SQLite 仅作为迁移来源和兼容测试后端。schema 由 Alembic 版本化管理，全文检索使用 PostgreSQL `pg_trgm` 索引。可用 `python .\scripts\migrate_sqlite_to_postgres.py .\data\literature.sqlite3 --inspect` 盘点旧 SQLite 文件；不要手动把 SQLite 数据库文件当作当前运行库。
+**数据库状态：**运行时仅使用 PostgreSQL；SQLAlchemy 2.x Engine / QueuePool 负责连接、事务和查询执行，psycopg 3 是 PostgreSQL 驱动，schema 由 Alembic 版本化管理，全文检索使用 PostgreSQL `pg_trgm` 索引。连接池按需创建，最大连接数默认为 12，可通过 `LITLOOM_DB_POOL_MAX` 和 `LITLOOM_DB_POOL_TIMEOUT` 调整。复杂检索保留显式 SQL；ORM 只在能简化实体 CRUD 时引入。SQLite 不参与应用运行；仅保留显式迁移脚本和隔离测试适配器。旧 SQLite 文件位于 `%LOCALAPPDATA%\LitLoom\legacy-sqlite\`，不会自动读入数据库。
 
 PDF 逐页文本提取是可选能力：需要时安装 `pypdf`（`python -m pip install pypdf`）。要让 AI 精读识别公式、图片、表格和流程图，建议同时安装 `PyMuPDF`（`python -m pip install PyMuPDF`）；页面会按需渲染为本地缓存，不修改原 PDF。
 
@@ -120,7 +119,7 @@ python .\app.py
 
 ## 长期研究 Agent
 
-研究 Agent 面向“研究目标”运行，不是一次性搜索按钮。目标会保存核心问题、关注维度、排除条件、来源、产物和停止条件；每次运行生成可审阅的 DAG。检索后的固定顺序是“候选检索 → 身份解析 → 版本合并 → 分层 → 覆盖评估 → 一轮补搜 → 一轮引用/被引/相似扩展”，每个节点都把输入和输出保存下来。证据综述再继续“全文准备 → 页级提取 → OCR 降级 → Claim → Evidence → Critic → 补证据 → 再核验 → 比较 → 补比较字段 → 重建最终矩阵 → 最终批判 → 研究产物”。每个步骤都记录输入/输出结构、完成条件、预算、耗时、错误和重试次数，刷新或重启后可以查看并继续。Apply/External 或全文页面外发步骤会在运行中停到等待确认；停止条件未满足时会在总预算内自动执行一次受限证据收敛轮次，仍有阻塞项会以“部分完成”状态展示。身份解析会明确标记 DOI、arXiv、题名匹配或未解决；引用扩展只产生候选快照，不会自动写入文献库，用户仍然逐篇选择导入。补充检索和引用扩展产生的临时候选会在全文准备、Claim、比较和最终产物阶段再次按稳定论文身份去重，避免同一工作被重复计数或重复推荐；多篇本地 PDF 提取使用有上限的并行工作线程，进度和输出顺序仍保持可追踪、可复现。
+研究 Agent 面向“研究目标”运行，不是一次性搜索按钮。目标会保存核心问题、关注维度、排除条件、来源、产物和停止条件；专项研究运行生成可审阅的 DAG；自主 Agent 运行不预先生成固定步骤，而是在 LangGraph 中根据目标、内置记忆和工具结果动态决定下一步，可调用工具、反思或直接回答。两种入口都把输入和输出保存下来。证据综述再继续“全文准备 → 页级提取 → OCR 降级 → Claim → Evidence → Critic → 补证据 → 再核验 → 比较 → 补比较字段 → 重建最终矩阵 → 最终批判 → 研究产物”。每个步骤都记录输入/输出结构、完成条件、预算、耗时、错误和重试次数，刷新或重启后可以查看并继续。Apply/External 或全文页面外发步骤会在运行中停到等待确认；停止条件未满足时会在总预算内自动执行一次受限证据收敛轮次，仍有阻塞项会以“部分完成”状态展示。身份解析会明确标记 DOI、arXiv、题名匹配或未解决；引用扩展只产生候选快照，不会自动写入文献库，用户仍然逐篇选择导入。补充检索和引用扩展产生的临时候选会在全文准备、Claim、比较和最终产物阶段再次按稳定论文身份去重，避免同一工作被重复计数或重复推荐；多篇本地 PDF 提取使用有上限的并行工作线程，进度和输出顺序仍保持可追踪、可复现。
 
 Agent 的阅读卡步骤会复用同一套持久化 AI 任务系统，而不是生成摘要占位文本：有本地 PDF 且模型配置可用时，任务会按页提取文字并生成带页码证据的结构化卡片与读前准备，不渲染或发送页面图像；公式、表格、曲线和流程图由多模态深度精读处理。任务 ID、阶段、进度、耗时、失败原因和重启中断状态会被保存。Agent 只生成 review-only 草稿，不覆盖人工阅读卡；无 PDF、未配置模型或任务失败时会明确返回缺口，不能被标记为“已精读”。
 
@@ -145,11 +144,11 @@ python -m py_compile .\app.py
 .\scripts\verify.ps1
 ```
 
-想按企业项目理解和参与开发时，先看 [`CONTRIBUTING.md`](CONTRIBUTING.md) 的变更流程、[`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) 的分层边界和 [`docs/ENGINEERING_PLAYBOOK.md`](docs/ENGINEERING_PLAYBOOK.md) 的需求→测试→发布→回滚流程。启动前可运行 `.scripts\doctor.ps1` 做只读配置诊断；它不会调用模型，也不会输出密钥。
+想按企业项目理解和参与开发时，先看 [`ARCHITECTURE.md`](ARCHITECTURE.md) 的分层边界和 [`DEVELOPMENT.md`](DEVELOPMENT.md) 的需求→测试→发布→回滚流程。启动前可运行 `scripts\doctor.ps1` 做只读配置诊断；它不会调用模型，也不会输出密钥。
 
 项目包含 Windows GitHub Actions 质量流水线 `.github/workflows/quality.yml`；它会在提交和 Pull Request 上执行相同的 Python、JavaScript 和集成测试。
 
-项目包装材料包括：`ADR.md`（架构决策记录）、`AGENT_ECOSYSTEM.md`（成熟 Agent 项目选型）、`DEVELOPMENT.md`（开发/发布/回滚流程）、`DEMO_RUNBOOK.md`（可复现面试演示）、`.env.example`（OpenAI-compatible 配置模板）。API 错误统一包含 `error_code`、`retryable` 和 `request_id`，契约定义在 `openapi.yaml` 的 `ErrorResponse`。
+项目只保留三份长期维护文档：`README.md`（使用）、`ARCHITECTURE.md`（架构）和 `DEVELOPMENT.md`（工程流程）。`.env.example` 是 OpenAI-compatible 配置模板；API 错误统一包含 `error_code`、`retryable` 和 `request_id`，契约定义在 `openapi.yaml` 的 `ErrorResponse`。
 
 ## 当前边界与后续顺序
 

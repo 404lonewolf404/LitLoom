@@ -11,7 +11,11 @@ data/*
 *.sqlite3-shm
 *.zip
 .env
+.env.*
+!.env.example
 !.github/
 /build/
 /dist/
+/tmp/
+/pdf/
 *.egg-info/

@@ -18,6 +18,13 @@ def _unregister_background_thread(thread: threading.Thread | None = None) -> Non
         _services().BACKGROUND_THREADS.discard(current)
 
 
+def _current_user_scope_key() -> str:
+    actor = _services().AUTH_ACTOR.get() or {}
+    user_id = _services().clean_text(actor.get("user_id", ""), 120)
+    workspace_id = _services().clean_text(actor.get("workspace_id", ""), 120)
+    return f"{workspace_id}:{user_id}" if user_id else ""
+
+
 def shutdown_background_workers(wait: bool = True) -> None:
     """Stop durable workers without leaving rows permanently queued.
 
@@ -135,6 +142,23 @@ def shutdown_background_workers(wait: bool = True) -> None:
         except RuntimeError:
             # An interpreter-level shutdown can race this best-effort cleanup;
             # all durable rows have already been marked for recovery above.
+            continue
+
+    scoped_executors = []
+    for attr, lock_attr in (
+        ("USER_AGENT_RUN_EXECUTORS", "USER_AGENT_RUN_EXECUTORS_LOCK"),
+        ("USER_AI_JOB_EXECUTORS", "USER_AI_JOB_EXECUTORS_LOCK"),
+    ):
+        with getattr(_services(), lock_attr):
+            mapping = getattr(_services(), attr)
+            scoped_executors.extend(mapping.values())
+            mapping.clear()
+    for executor in scoped_executors:
+        try:
+            executor.shutdown(wait=wait, cancel_futures=True)
+        except TypeError:
+            executor.shutdown(wait=wait)
+        except RuntimeError:
             continue
 
     if wait:
@@ -785,17 +809,22 @@ def run_ai_job(job_id: str) -> None:
     started_at = _services().now_iso()
     is_abstract_brief = job_type == "abstract_brief"
     is_paragraph_explain = job_type == "paragraph_explain"
+    is_reading_segmentation = job_type == "reading_segmentation"
     _services().update_ai_job(
         job_id,
         status="running",
         stage=(
             "synthesis_retry"
             if synthesis_source
-            else "model_request" if is_abstract_brief or is_paragraph_explain else "extracting"
+            else "model_request"
+            if is_abstract_brief or is_paragraph_explain or is_reading_segmentation
+            else "extracting"
         ),
         started_at=started_at,
         progress_current=0,
-        progress_total=1 if synthesis_source or is_abstract_brief or is_paragraph_explain else 0,
+        progress_total=1
+        if synthesis_source or is_abstract_brief or is_paragraph_explain or is_reading_segmentation
+        else 0,
         message=(
             "正在载入已保存证据并准备综合"
             if synthesis_source
@@ -804,6 +833,8 @@ def run_ai_job(job_id: str) -> None:
                 if is_abstract_brief
                 else "正在解释当前原文段落"
                 if is_paragraph_explain
+                else "正在判断阅读块边界"
+                if is_reading_segmentation
                 else "正在准备 PDF 页面和文本"
             )
         ),
@@ -859,6 +890,10 @@ def run_ai_job(job_id: str) -> None:
             )
         elif is_paragraph_explain:
             result = _services().analyze_paper_segment(
+                job["paper_id"], options, progress_callback=progress
+            )
+        elif is_reading_segmentation:
+            result = _services().organize_reading_blocks(
                 job["paper_id"], options, progress_callback=progress
             )
         elif job_type == "deep_read" and synthesis_source:
@@ -936,7 +971,13 @@ def run_ai_job(job_id: str) -> None:
         success_message = (
             "已仅使用保存的 PDF 证据完成跨页综合"
             if synthesis_source
-            else "摘要助读已生成并保存" if is_abstract_brief else "当前段落解释已保存" if is_paragraph_explain else "分析完成"
+            else "摘要助读已生成并保存"
+            if is_abstract_brief
+            else "当前段落解释已保存"
+            if is_paragraph_explain
+            else "阅读块语义整理已保存"
+            if is_reading_segmentation
+            else "分析完成"
         )
         # Finish through the same monotonic progress path used by every
         # phase.  A deep-read may have reported a larger visual-page total;
@@ -1075,6 +1116,7 @@ def submit_ai_job(paper_id: str, job_type: str, data: dict) -> dict:
         "deep_read",
         "prereading_guide",
         "paragraph_explain",
+        "reading_segmentation",
     }:
         raise ValueError("未知的 AI 任务类型")
     synthesis_only_artifact_id = (
@@ -1119,6 +1161,7 @@ def submit_ai_job(paper_id: str, job_type: str, data: dict) -> dict:
             "deep_read": "graduate_deep_read",
             "prereading_guide": "paper_prereading_guide",
             "paragraph_explain": "paragraph_explain_v1",
+            "reading_segmentation": "semantic_reading_blocks_v1",
         }[job_type]
         # Quick reading cards are text-first and never need page images. Deep
         # read keeps visual recognition enabled by default, but callers can
@@ -1143,6 +1186,11 @@ def submit_ai_job(paper_id: str, job_type: str, data: dict) -> dict:
                 else False
             ),
         }
+        if job_type == "reading_segmentation":
+            if data.get("consent") is not True:
+                raise ValueError("请先确认允许将论文短文本片段发送给模型判断分块")
+            options["consent"] = True
+            options["force"] = data.get("force") is True
         if job_type == "paragraph_explain":
             for key in ("segment_key", "text", "previous_context", "next_context"):
                 options[key] = _services().clean_text(
@@ -1175,7 +1223,7 @@ def submit_ai_job(paper_id: str, job_type: str, data: dict) -> dict:
         # analysis template are unchanged. This is the important long-term
         # speed path: reopening a paper or refreshing the browser must not
         # trigger another expensive multimodal run.
-        if job_type not in {"abstract_brief", "paragraph_explain"} and data.get("reuse", True) is not False:
+        if job_type not in {"abstract_brief", "paragraph_explain", "reading_segmentation"} and data.get("reuse", True) is not False:
             source_fingerprint = _services().fulltext_source_fingerprint(paper_id)
             if source_fingerprint:
                 artifact_type = {
@@ -1334,6 +1382,23 @@ def submit_ai_job(paper_id: str, job_type: str, data: dict) -> dict:
     if _services().STOP_EVENT.is_set():
         _services()._mark_ai_job_interrupted_for_shutdown(job_id)
         raise RuntimeError(_services().RUNTIME_SHUTDOWN_MESSAGE)
+    scope_key = _services()._current_user_scope_key()
+    if scope_key:
+        with _services().USER_AI_JOB_EXECUTORS_LOCK:
+            executor = _services().USER_AI_JOB_EXECUTORS.get(scope_key)
+            if executor is None:
+                executor = _services().ThreadPoolExecutor(
+                    max_workers=_services().AI_JOB_CONCURRENCY,
+                    thread_name_prefix="ai-job-user",
+                )
+                _services().USER_AI_JOB_EXECUTORS[scope_key] = executor
+            try:
+                executor.submit(_services().run_ai_job, job_id)
+            except RuntimeError as exc:
+                _services().USER_AI_JOB_EXECUTORS.pop(scope_key, None)
+                _services()._mark_ai_job_interrupted_for_shutdown(job_id)
+                raise RuntimeError(_services().RUNTIME_SHUTDOWN_MESSAGE) from exc
+        return {"job": _services().ai_job_snapshot(row), "deduplicated": False}
     with _services().AI_JOB_EXECUTOR_LOCK:
         if _services().STOP_EVENT.is_set():
             _services()._mark_ai_job_interrupted_for_shutdown(job_id)
@@ -1634,6 +1699,7 @@ def resume_interrupted_sync_jobs(limit: int = 20) -> list[dict]:
 
 
 __all__ = [
+    "_current_user_scope_key",
     "_register_background_thread",
     "_unregister_background_thread",
     "shutdown_background_workers",

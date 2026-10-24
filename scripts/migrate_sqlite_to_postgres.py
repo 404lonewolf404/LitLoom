@@ -5,7 +5,7 @@ not modify the SQLite source and refuses to write into a non-empty target.
 PostgreSQL full-text indexes are derived data and must be rebuilt by the target
 application after its PostgreSQL backend is installed.
 
-Install the optional driver with ``python -m pip install -e .[postgres]`` and
+Install the project dependencies with ``python -m pip install -e .`` and
 set ``LITLOOM_DATABASE_URL`` in the environment. The URL is never printed.
 """
 
@@ -24,7 +24,7 @@ def _sqlalchemy():
         import sqlalchemy as sa
     except ImportError as exc:  # pragma: no cover - environment-specific
         raise RuntimeError(
-            "PostgreSQL 迁移依赖未安装。请运行：python -m pip install -e .[postgres]"
+            "PostgreSQL 迁移依赖未安装。请运行：python -m pip install -e ."
         ) from exc
     return sa
 

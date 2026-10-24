@@ -1,0 +1,69 @@
+.reading-purpose {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin: 13px 0 2px;
+  padding: 10px 12px;
+  border-left: 3px solid #83a58a;
+  background: #f2f6f1;
+  color: #52685a;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.reading-purpose b {
+  color: #46624e;
+  white-space: nowrap;
+}
+
+.reading-purpose span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reader-favorite {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+}
+
+.reading-section-nav {
+  position: sticky;
+  top: 64px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 -2px 4px;
+  padding: 9px 2px;
+  border-bottom: 1px solid #e8eee8;
+  background: #fff;
+  scrollbar-width: thin;
+}
+
+.reading-section-nav .button {
+  flex: 0 0 auto;
+}
+
+.reading-section-nav .button.active {
+  border-color: #9db5a0;
+  background: #edf4ed;
+  color: #345c42;
+}
+
+.reading-anchor {
+  scroll-margin-top: 118px;
+}
+
+@media (max-width: 560px) {
+  .reading-purpose {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .reading-section-nav {
+    top: 56px;
+  }
+}

@@ -1,2 +1,0 @@
-app
-literature_desk

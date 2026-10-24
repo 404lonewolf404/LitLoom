@@ -1,21 +1,10 @@
 include README.md
 include LICENSE
 include ARCHITECTURE.md
-include AGENT_ECOSYSTEM.md
-include MULTIUSER_PLATFORM_DESIGN.md
-include OPERATIONS.md
-include PROJECT_SHOWCASE.md
-include 需求分析.md
-include CHANGELOG.md
-include SECURITY.md
 include openapi.yaml
 include .env.example
-include ADR.md
 include DEVELOPMENT.md
-include DEMO_RUNBOOK.md
-include MCP.md
 include mcp_server.py
 include scripts/migrate_sqlite_to_postgres.py
 recursive-include static *.html *.css *.js *.svg *.png
 recursive-include literature_desk *.py
-recursive-include docs *.md

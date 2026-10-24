@@ -14,7 +14,7 @@ class RuntimeConfigTests(unittest.TestCase):
             {
                 "LITERATURE_HOST": "127.0.0.1",
                 "LITERATURE_PORT": "8772",
-                "LITLOOM_DATABASE_URL": "",
+                "LITLOOM_DATABASE_URL": "postgresql://test:test@localhost/litloom",
                 "LIT_AGENT_API_KEY": "",
                 "LIT_AGENT_API_KEY_FILE": "",
             },

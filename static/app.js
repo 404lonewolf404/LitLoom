@@ -9,20 +9,22 @@ const PAGE_NAMES = {home:'今日',discover:'发现论文',library:'文献库',re
 const UI_STATE_KEY = 'researchdesk.ui-state.v1';
 function readUiState(){try{const value=JSON.parse(localStorage.getItem(UI_STATE_KEY)||'{}');return value&&typeof value==='object'?value:{}}catch{return {};}}
 const persistedUiState = readUiState();
+const requestedView = new URLSearchParams(location.search).get('view');
 let authMode = {enabled:false,authenticated:true,user:null,bootstrap_required:false,bootstrap_token_path:''};
 let workspaces = [];
 let workspaceMembersLoaded = false;
 let workspaceMembersLoading = false, workspaceMembers = [];
-let appState = null, papers = [], queries = [], runs = [], aiJobs = [], syncJobs = [], pdfIngestJobs = [], pdfFolders = [], pdfImportPollTimer = null, metadataDraftJob = null, metadataDraftTimer = null, analytics = null, recommendations = null, briefing = null, settingsSnapshot = null, activeView = PAGE_NAMES[persistedUiState.activeView]?persistedUiState.activeView:'home', libraryStatus = '', libraryQuery = '', libraryTopic = '', librarySort = 'recent', libraryFavorite = false, libraryHasCard = false, libraryPage = {items:[],total:0,limit:50,offset:0,has_more:false,topics:[]}, libraryRequestId = 0, discoveryResults = [], discoveryMeta = null, discoveryQuery = '', activeDiscoveryRunId = persistedUiState.discoveryRunId||'', discoveryRestoreTimer = null, discoveryRestoreRunId = '', discoveryRestoreAttempts = 0, discoveryTriageTimer = null, discoveryTriageRunId = '', discoveryTriageAttempts = 0, discoveryTriageFilter = 'all', discoveryHistory = [], discoveryHistoryLoaded = false, discoveryHistoryLoading = null, discoveryHistoryFetchedAt = 0, discoveryHistoryError = '', selectedPaperId = persistedUiState.selectedPaperId||'', deepReadPaperId = persistedUiState.deepReadPaperId||'', deepReadState = {paper:null, analyses:[], jobs:[], loading:false, error:'', filter:persistedUiState.deepReadFilter||'overview', queueFilter:persistedUiState.deepReadQueueFilter||'all', queueQuery:persistedUiState.deepReadQueueQuery||'', segments:[], segmentIndex:Number(persistedUiState.deepReadSegmentIndex||0), segmentsLoading:false, segmentsError:'', paragraphJobId:'', queueTimer:null}, activeModalPaperId = '', agentConfigured = false, selectedLibraryIds = new Set(), aiDrafts = {}, aiDeepReads = {}, aiAnalyses = {}, aiJobPollers = {}, globalAiJobsTimer = null, uiStateRestored = false, agentGoals = [], agentTools = [], activeAgentGoalId = localStorage.getItem('researchdesk.agent-goal')||'', activeAgentRun = null, agentMemory = {papers:[],critiques:[]}, agentWorkspaceTimer = null, agentModelConfigured = false, agentWorkspaceLoading = false;
+let appState = null, papers = [], queries = [], runs = [], aiJobs = [], syncJobs = [], pdfIngestJobs = [], pdfFolders = [], pdfImportPollTimer = null, metadataDraftJob = null, metadataDraftTimer = null, analytics = null, recommendations = null, briefing = null, settingsSnapshot = null, activeView = PAGE_NAMES[requestedView]?requestedView:(PAGE_NAMES[persistedUiState.activeView]?persistedUiState.activeView:'home'), libraryStatus = '', libraryQuery = '', libraryTopic = '', librarySort = 'recent', libraryFavorite = false, libraryHasCard = false, libraryPage = {items:[],total:0,limit:50,offset:0,has_more:false,topics:[]}, libraryRequestId = 0, discoveryResults = [], discoveryMeta = null, discoveryQuery = '', activeDiscoveryRunId = persistedUiState.discoveryRunId||'', discoveryRestoreTimer = null, discoveryRestoreRunId = '', discoveryRestoreAttempts = 0, discoveryTriageTimer = null, discoveryTriageRunId = '', discoveryTriageAttempts = 0, discoveryTriageFilter = 'all', discoveryHistory = [], discoveryHistoryLoaded = false, discoveryHistoryLoading = null, discoveryHistoryFetchedAt = 0, discoveryHistoryError = '', selectedPaperId = persistedUiState.selectedPaperId||'', deepReadPaperId = persistedUiState.deepReadPaperId||'', deepReadState = {paper:null, analyses:[], jobs:[], loading:false, error:'', filter:persistedUiState.deepReadFilter||'overview', queueFilter:persistedUiState.deepReadQueueFilter||'all', queueQuery:persistedUiState.deepReadQueueQuery||'', segments:[], segmentation:{mode:'structure'}, segmentationSubmitting:false, pageNumbers:[], pdfPage:Number(persistedUiState.deepReadPdfPage||0), segmentIndex:Number(persistedUiState.deepReadSegmentIndex||0), segmentsLoading:false, segmentsError:'', paragraphJobId:'', queueTimer:null}, activeModalPaperId = '', agentConfigured = false, modelConfigState = {status:'loading',error:'',fetchedAt:0}, modelConfigTimer = null, modelConfigInFlight = null, selectedLibraryIds = new Set(), aiDrafts = {}, aiDeepReads = {}, aiAnalyses = {}, aiJobPollers = {}, globalAiJobsTimer = null, uiStateRestored = false, agentGoals = [], agentTools = [], activeAgentGoalId = localStorage.getItem('researchdesk.agent-goal')||'', activeAgentRun = null, agentMemory = {papers:[],critiques:[]}, agentWorkspaceTimer = null, agentModelConfigured = false, agentWorkspaceLoading = false;
 let recommendationPollTimer = null, recommendationPollAttempts = 0;
 let semanticIndexPollers = {};
 const METADATA_DRAFT_JOB_KEY='litloom.metadata-draft-job.v1';
 const DISCOVERY_DEFAULT_OPTIONS={expand_concepts:true,expand_relations:false,suppress_seen:false,fill_repeats:true,avoid_repeats:true,ai_screen:true,ai_expand:true,search_backend:'model_web',sort:'relevance',search_depth:'balanced',discovery_mode:'balanced'};
 let discoveryDraft=persistedUiState.discoveryDraft||{query:'',sources:['arxiv','openalex'],options:{...DISCOVERY_DEFAULT_OPTIONS}}, discoveryDraftRunId=persistedUiState.discoveryDraftRunId||'', selectedCandidateIds=new Set(persistedUiState.selectedCandidateIds||[]), discoveryHistoryOffset=0, discoveryHistorySearch='', discoveryHistorySearchTimer=null;
-let studyPage={items:[],total:0,limit:120,offset:0,has_more:false,counts:{new:0,learning:0,mastered:0},by_type:{prerequisite:0,glossary:0,notation:0},review:{due_count:0,overdue_count:0,due_only:false}},studyQuery='',studyMastery='',studyType='',studyDueOnly=false,studyRequestId=0,studySearchTimer=null;
+let studyPage={items:[],total:0,limit:120,offset:0,has_more:false,counts:{new:0,learning:0,mastered:0},by_type:{prerequisite:0,glossary:0,notation:0,self_check:0},review:{due_count:0,overdue_count:0,due_only:false},paper_options:[]},studyQuery='',studyMastery='',studyType='',studyPaperId=persistedUiState.prereadingPaperId||'',studyDueOnly=false,studyRequestId=0,studySearchTimer=null;
 if(!localStorage.getItem('litloom.model-search-default.v1')){discoveryDraft={...discoveryDraft,options:{...DISCOVERY_DEFAULT_OPTIONS,...(discoveryDraft.options||{}),search_backend:'model_web'}};localStorage.setItem('litloom.model-search-default.v1','1');persistUiState();}
 discoveryTriageFilter=persistedUiState.discoveryTriageFilter||'recommended';
-function persistUiState(){try{localStorage.setItem(UI_STATE_KEY,JSON.stringify({activeView,selectedPaperId,deepReadPaperId,deepReadFilter:deepReadState.filter||'overview',deepReadQueueFilter:deepReadState.queueFilter||'all',deepReadQueueQuery:deepReadState.queueQuery||'',deepReadSegmentIndex:Number(deepReadState.segmentIndex||0),openPaperId:activeModalPaperId,discoveryRunId:activeDiscoveryRunId,discoveryDraft,discoveryDraftRunId,discoveryTriageFilter,selectedCandidateIds:[...selectedCandidateIds],updatedAt:new Date().toISOString()}));}catch{}}
+let discoveryLibraryFilter=persistedUiState.discoveryLibraryFilter||'new';
+function persistUiState(){try{localStorage.setItem(UI_STATE_KEY,JSON.stringify({activeView,selectedPaperId,deepReadPaperId,deepReadFilter:deepReadState.filter||'overview',deepReadQueueFilter:deepReadState.queueFilter||'all',deepReadQueueQuery:deepReadState.queueQuery||'',deepReadSegmentIndex:Number(deepReadState.segmentIndex||0),deepReadPdfPage:Number(deepReadState.pdfPage||0),prereadingPaperId:studyPaperId,openPaperId:activeModalPaperId,discoveryRunId:activeDiscoveryRunId,discoveryDraft,discoveryDraftRunId,discoveryTriageFilter,discoveryLibraryFilter,selectedCandidateIds:[...selectedCandidateIds],updatedAt:new Date().toISOString()}));}catch{}}
 function discoveryStatusActive(status=discoveryMeta?.status){return ['queued','running'].includes(String(status||''));}
 function discoveryStatusLabel(status){return ({queued:'排队中',running:'检索中',success:'已完成',partial:'部分完成',failed:'失败',interrupted:'已中断',cancelled:'已取消'})[status]||status||'未知状态';}
 function discoveryDisplayStatus(meta={}){
@@ -52,6 +54,53 @@ function scheduleGlobalAiJobsRefresh(){
   if(globalAiJobsTimer)clearTimeout(globalAiJobsTimer);
   if(!aiJobs.some(job=>['queued','running'].includes(job.status))&&!syncJobs.some(job=>['queued','running'].includes(job.status))&&!['queued','running'].includes(metadataDraftJob?.status))return;
   globalAiJobsTimer=setTimeout(async()=>{try{const requests=[api('/api/ai-jobs?limit=30'),api('/api/sync-jobs?limit=20')];const metadataId=localStorage.getItem(METADATA_DRAFT_JOB_KEY);if(metadataId)requests.push(api(`/api/metadata-draft-jobs/${encodeURIComponent(metadataId)}`));const [aiData,syncData,metadataData]=await Promise.all(requests);aiJobs=aiData.jobs||[];syncJobs=syncData||[];if(metadataData)metadataDraftJob=metadataData;renderGlobalTaskStatus();if(settingsSnapshot){settingsSnapshot.aiJobs=aiJobs;settingsSnapshot.syncJobs=syncJobs;settingsSnapshot.metadataDraftJob=metadataDraftJob;}if(activeView==='home'||activeView==='settings')renderView();}catch{}scheduleGlobalAiJobsRefresh();},2000);
+}
+function applyModelConfiguration(settings){
+  const value=settings&&typeof settings==='object'?settings:{};
+  agentConfigured=Boolean(value.api_key_set&&value.enabled);
+  modelConfigState={status:'ready',error:'',fetchedAt:Date.now(),...value};
+  if(settingsSnapshot)settingsSnapshot.model=value;
+  updateModelDependentControls();
+}
+function modelConfigurationHint(){
+  if(modelConfigState.status==='loading')return '正在读取模型配置…';
+  if(modelConfigState.status==='error')return '模型配置暂时无法读取，系统会自动重试';
+  return agentConfigured?'可按需要运行':'请在系统设置配置模型';
+}
+function updateModelDependentControls(){
+  const configured=Boolean(agentConfigured);
+  $$('[data-model-required]').forEach(button=>{
+    const sourceReady=button.dataset.sourceReady!=='false';
+    const running=button.dataset.running==='true';
+    const allowed=configured&&sourceReady&&!running;
+    button.disabled=!allowed;
+    if(!allowed){
+      button.title=running?'任务正在运行':!configured?modelConfigurationHint():'请先添加或下载本地 PDF';
+    }else if(button.dataset.modelTitle)button.title=button.dataset.modelTitle;
+  });
+  const status=$('#model-runtime-status');
+  if(status)status.textContent=agentConfigured?'模型已就绪':modelConfigurationHint();
+  const label=$('#model-runtime-label');
+  if(label)label.textContent=agentConfigured?'模型已配置':modelConfigurationHint();
+  $$('.full-ai-analysis [data-model-hint]').forEach(item=>{
+    if(item.dataset.sourceReady==='false')item.textContent='先添加或下载本地 PDF';
+    else item.textContent=agentConfigured?'可按需要单独运行':modelConfigurationHint();
+  });
+  $$('.deepread-actions [data-model-hint]').forEach(item=>{item.textContent=agentConfigured?'模型已就绪，可按阶段运行':modelConfigurationHint();});
+}
+function scheduleModelConfigurationRefresh(){
+  if(modelConfigTimer)clearTimeout(modelConfigTimer);
+  const delay=modelConfigState.status==='ready'?60000:4000;
+  modelConfigTimer=setTimeout(()=>{loadModelConfiguration({render:false});},delay);
+}
+async function loadModelConfiguration({force=false}={}){
+  if(modelConfigInFlight&&!force)return modelConfigInFlight;
+  modelConfigInFlight=(async()=>{
+    try{applyModelConfiguration(await api('/api/settings/model',{timeout_ms:5000}));}
+    catch(error){agentConfigured=false;modelConfigState={...modelConfigState,status:'error',error:error.message||'模型配置读取失败',fetchedAt:Date.now()};updateModelDependentControls();}
+    finally{modelConfigInFlight=null;scheduleModelConfigurationRefresh();}
+  })();
+  return modelConfigInFlight;
 }
 function restoreMetadataDraftJob(){
  const id=localStorage.getItem(METADATA_DRAFT_JOB_KEY);if(!id)return;
@@ -91,11 +140,13 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function cookieValue(name){const prefix=`${name}=`;return document.cookie.split(';').map(value=>value.trim()).find(value=>value.startsWith(prefix))?.slice(prefix.length)||'';}
 async function api(url, options={}) {
   const method=(options.method||'GET').toUpperCase();
-  const maxAttempts=method==='GET'?2:1;
+  const maxAttempts=2;
+  const timeoutMs=Number(options.timeout_ms)||API_TIMEOUT_MS;
+  let authRecoveryAttempted=false;
   let lastError;
   for(let attempt=0;attempt<maxAttempts;attempt++){
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),API_TIMEOUT_MS);
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
     const externalSignal=options.signal;
     const abortExternal=()=>controller.abort();
     if(externalSignal){if(externalSignal.aborted)controller.abort();else externalSignal.addEventListener('abort',abortExternal,{once:true});}
@@ -104,11 +155,26 @@ async function api(url, options={}) {
       if(authMode.enabled&&!['GET','HEAD','OPTIONS'].includes(method)&&!['/api/auth/login','/api/auth/bootstrap'].includes(new URL(url,location.href).pathname)){
         const csrf=cookieValue('litloom_csrf');if(csrf)headers['X-LitLoom-CSRF']=csrf;
       }
-      const res=await fetch(url,{...options,signal:controller.signal,headers});
+      const requestOptions={...options};delete requestOptions.timeout_ms;
+      // Keep browser sessions and the CSRF cookie attached even when the
+      // workspace is opened from a restored tab or after a service restart.
+      const res=await fetch(url,{...requestOptions,credentials:'same-origin',signal:controller.signal,headers});
       let data;if((res.headers.get('content-type')||'').includes('application/json'))data=await res.json();else data=await res.text();
       if(!res.ok){
         if(res.status===401&&authMode.enabled&&!['/api/auth/login','/api/auth/bootstrap'].includes(new URL(url,location.href).pathname)){authMode.authenticated=false;renderAuthGate();}
         const detail=(data&&typeof data==='object'&&data.error)||`请求失败（${res.status}）`;
+        const path=new URL(url,location.href).pathname;
+        const staleCsrf=res.status===403&&authMode.enabled&&!authRecoveryAttempted&&
+          path!=='/api/auth/local-login'&&/安全令牌|csrf/i.test(String(detail))&&
+          Boolean(authMode.local_auto_login_available)&&authMode.user?.username==='local.default';
+        if(staleCsrf){
+          authRecoveryAttempted=true;
+          try{
+            await fetch('/api/auth/local-login',{method:'POST',credentials:'same-origin',
+              headers:{'Content-Type':'application/json'},body:'{}'});
+            continue;
+          }catch{}
+        }
         const retryable=method==='GET'&&[502,503,504].includes(res.status)&&attempt<maxAttempts-1;
         if(retryable){lastError=new Error(detail);await sleep(350);continue;}
         const requestError=new Error(detail);
@@ -119,7 +185,7 @@ async function api(url, options={}) {
       return data;
     }catch(error){
       const timedOut=error?.name==='AbortError';
-      lastError=timedOut?new Error(`请求超时（${Math.round(API_TIMEOUT_MS/1000)} 秒）：${url}`):error;
+      lastError=timedOut?new Error(`请求超时（${Math.round(timeoutMs/1000)} 秒）：${url}`):error;
       const retryable=method==='GET'&&attempt<maxAttempts-1&&(!externalSignal||!externalSignal.aborted)&&(!timedOut)&&!Number.isInteger(error?.status);
       if(retryable){await sleep(350);continue;}
       throw lastError;
@@ -134,7 +200,7 @@ const jsonBody = value => JSON.stringify(value);
 function renderAuthGate(message=''){
   const root=$('#auth-root');if(!root)return;
   const bootstrap=Boolean(authMode.bootstrap_required),path=authMode.bootstrap_token_path||'';
-  root.innerHTML=`<main class="auth-screen"><form id="auth-form" class="auth-panel" autocomplete="on"><img src="/static/litloom-icon.png" alt="" class="auth-mark"><p class="eyebrow">LitLoom · 团队工作区</p><h1>${bootstrap?'创建工作区管理员':'登录研究空间'}</h1><p class="auth-copy">${bootstrap?'首次启用团队模式，请使用本机生成的一次性令牌创建管理员。':'登录后访问团队共享文献库与研究任务。'}</p>${bootstrap?`<label>一次性初始化令牌<input class="field-input" name="bootstrap_token" required autocomplete="off"></label><small class="auth-hint">令牌文件：<code>${esc(path)}</code></small><label>显示名称<input class="field-input" name="display_name" maxlength="120" placeholder="例如：林同学"></label>`:''}<label>用户名<input class="field-input" name="username" required minlength="3" maxlength="40" autocomplete="username" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,39}"></label><label>密码<input class="field-input" name="password" type="password" required minlength="${bootstrap?'12':'1'}" maxlength="256" autocomplete="${bootstrap?'new-password':'current-password'}" ${bootstrap?'':'autofocus'}></label>${bootstrap?'<small class="auth-hint">至少 12 位，并同时包含字母与数字。</small>':''}<div id="auth-error" class="auth-error" role="alert">${esc(message)}</div><button class="button primary auth-submit" type="submit">${bootstrap?'创建管理员并进入':'登录'}</button><button class="text-link auth-retry" type="button" data-auth-retry>重新连接</button></form></main>`;
+  root.innerHTML=`<main class="auth-screen"><form id="auth-form" class="auth-panel" autocomplete="on"><img src="/static/litloom-icon.png" alt="" class="auth-mark"><p class="eyebrow">LitLoom · 团队工作区</p><h1>${bootstrap?'创建工作区管理员':'登录研究空间'}</h1><p class="auth-copy">${bootstrap?'首次启用团队模式，请使用本机生成的一次性令牌创建管理员。':'登录后访问团队共享文献库与研究任务。'}</p>${bootstrap?`<label>一次性初始化令牌<input class="field-input" name="bootstrap_token" required autocomplete="off"></label><small class="auth-hint">令牌文件：<code>${esc(path)}</code></small><label>显示名称<input class="field-input" name="display_name" maxlength="120" placeholder="例如：林同学"></label>`:''}<label>用户名<input class="field-input" name="username" required minlength="3" maxlength="40" autocomplete="username" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,39}"></label><label>密码<input class="field-input" name="password" type="password" required minlength="${bootstrap?'12':'1'}" maxlength="256" autocomplete="${bootstrap?'new-password':'current-password'}" ${bootstrap?'':'autofocus'}></label>${bootstrap?'<small class="auth-hint">至少 12 位，并同时包含字母与数字。</small>':''}<div id="auth-error" class="auth-error" role="alert">${esc(message)}</div><button class="button primary auth-submit" type="submit">${bootstrap?'创建管理员并进入':'登录'}</button>${authMode.local_auto_login_available?'<button class="button small local-entry-button" type="button" data-local-login>默认用户进入</button>':''}<button class="text-link auth-retry" type="button" data-auth-retry>重新连接</button></form></main>`;
   root.hidden=false;
 }
 function renderAuthAccount(){
@@ -184,6 +250,14 @@ document.addEventListener('submit',async event=>{
   }
 },true);
 document.addEventListener('click',async event=>{
+  const localLogin=event.target.closest('[data-local-login]');
+  if(localLogin){
+    localLogin.disabled=true;localLogin.textContent='正在进入…';
+    const error=$('#auth-error');if(error)error.textContent='';
+    try{await api('/api/auth/local-login',{method:'POST',body:'{}'});const ready=await initializeWorkspace();if(ready)toast('已通过本机默认用户进入');}
+    catch(err){if(error)error.textContent=err.message;localLogin.disabled=false;localLogin.textContent='默认用户进入';}
+    return;
+  }
   if(event.target.closest('[data-auth-retry]')){authMode.connectionError='';await initializeWorkspace();return;}
   if(event.target.closest('[data-action="auth-logout"]')){try{await api('/api/auth/logout',{method:'POST',body:'{}'});}catch{}authMode={...authMode,authenticated:false,user:null};renderAuthGate();return;}
   if(event.target.closest('[data-action="auth-password"]')){openModal(`<div class="modal-head"><div><h3>修改密码</h3><p>更新后，其他已登录设备会被退出。</p></div><button class="close-button" data-close-modal>×</button></div><form id="auth-password-form"><div class="modal-body"><label>当前密码<input class="field-input" type="password" name="current_password" required autocomplete="current-password"></label><label style="margin-top:12px">新密码<input class="field-input" type="password" name="new_password" required minlength="12" maxlength="256" autocomplete="new-password"></label><small class="auth-hint">至少 12 位，并同时包含字母与数字。</small><div class="auth-error" id="auth-password-error" role="alert"></div></div><div class="modal-foot"><button class="button" type="button" data-close-modal>取消</button><button class="button primary" type="submit">更新密码</button></div></form>`);return;}
@@ -225,17 +299,22 @@ function clearMissingDiscoveryRun(runId){
 
 async function refresh() {
   try {
+    // Start this independently so a transient dashboard/database failure does
+    // not prevent the AI readiness state from recovering in the background.
+    loadModelConfiguration();
     const libraryRequest=activeView==='library'?libraryUrl():(activeView==='reading'?'/api/library?limit=200&status=reading,to_read,inbox,later&sort=recent':'/api/library?limit=50');
-    const [stateResult,libraryResult,queryResult,runResult,jobResult,syncResult,modelResult] = await Promise.allSettled([api('/api/state'),api(libraryRequest),api('/api/queries'),api('/api/runs?limit=30'),api('/api/ai-jobs?limit=30'),api('/api/sync-jobs?limit=30'),api('/api/settings/model')]);
+    const [stateResult,libraryResult,queryResult,runResult,jobResult,syncResult] = await Promise.allSettled([api('/api/state'),api(libraryRequest),api('/api/queries'),api('/api/runs?limit=30'),api('/api/ai-jobs?limit=30'),api('/api/sync-jobs?limit=30')]);
     const required=[stateResult,libraryResult,queryResult,runResult];
     const requiredError=required.find(item=>item.status==='rejected');
     if(requiredError)throw requiredError.reason;
     appState=stateResult.value;libraryPage=libraryResult.value;papers=libraryPage.items||[];queries=queryResult.value;runs=runResult.value;
     if(jobResult.status==='fulfilled')aiJobs=jobResult.value.jobs||[];
     if(syncResult.status==='fulfilled')syncJobs=syncResult.value||[];
-    if(modelResult.status==='fulfilled')agentConfigured=Boolean(modelResult.value.api_key_set&&modelResult.value.enabled);
     analytics = null;
     renderSidebar(); renderGlobalTaskStatus(); renderView(); if(activeView==='discover')loadDiscoveryHistory();if(activeView==='prereading')loadStudyItems(true);
+    // Model configuration is independent of the library/dashboard refresh. A
+    // slow or recovering database must not leave every AI control grey forever.
+    loadModelConfiguration();
     scheduleGlobalAiJobsRefresh();
     if(!uiStateRestored){
       uiStateRestored=true;
@@ -294,7 +373,18 @@ async function restoreDiscoveryRun(runId){
     discoveryMeta={...result,...detail,run:detail};
     discoveryQuery=result.query||detail.query_name||discoveryQuery;
     restoreDiscoveryDraft(result);
-    if(Array.isArray(result.papers))discoveryResults=result.papers;
+    if(Array.isArray(result.papers)){
+      discoveryResults=result.papers;
+      // A refresh can restore a run after some candidates were already
+      // imported. Drop those IDs from the persisted selection so the bulk
+      // import button never reports a stale count or re-imports a paper.
+      const selectable=new Set(result.papers
+        .filter(item=>String(item?.id||'').startsWith('candidate:')&&!item.imported_paper_id)
+        .map(item=>item.id));
+      selectedCandidateIds=new Set([...selectedCandidateIds].filter(id=>selectable.has(id)));
+      persistUiState();
+    }
+    discoveryRestoreAttempts=0;
     renderGlobalTaskStatus();
     if(activeView==='discover')renderView();
     if(discoveryStatusActive(result.status))watchDiscoveryRun(runId);
@@ -305,7 +395,22 @@ async function restoreDiscoveryRun(runId){
     }
   }catch(err){
     if(isMissingRunError(err)){clearMissingDiscoveryRun(runId);return;}
-    if(activeDiscoveryRunId===runId){discoveryMeta={...(discoveryMeta||{}),id:runId,status:'unknown',error:`无法恢复检索状态：${err.message}`};if(activeView==='discover')renderView();}
+    if(activeDiscoveryRunId!==runId)return;
+    // Opening a saved search performs two reads in parallel. A transient
+    // connection reset must not turn a durable queued/running run into a
+    // false failure. Retry with a bounded backoff, keeping the last known
+    // state visible while the server continues working.
+    discoveryRestoreAttempts++;
+    if(discoveryRestoreAttempts<12){
+      discoveryMeta={...(discoveryMeta||{}),id:runId,error:`正在恢复检索状态（${discoveryRestoreAttempts}/12）…`};
+      if(activeView==='discover')renderView();
+      discoveryRestoreTimer=setTimeout(()=>restoreDiscoveryRun(runId),Math.min(4000,700+discoveryRestoreAttempts*350));
+      return;
+    }
+    discoveryRestoreRunId='';
+    discoveryRestoreTimer=null;
+    discoveryMeta={...(discoveryMeta||{}),id:runId,status:'failed',error:`无法读取检索进度：${err.message}`};
+    if(activeView==='discover')renderView();
   }
 }
 function watchDiscoveryRun(runId){

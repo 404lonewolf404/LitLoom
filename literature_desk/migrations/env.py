@@ -5,14 +5,21 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.engine import make_url
 
 config = context.config
 if config.config_file_name:
     fileConfig(config.config_file_name)
 
-database_url = os.environ.get("LITLOOM_DATABASE_URL", "").strip()
+database_url = config.get_main_option("sqlalchemy.url", "").strip()
+if not database_url:
+    database_url = os.environ.get("LITLOOM_DATABASE_URL", "").strip()
 if not database_url:
     raise RuntimeError("LITLOOM_DATABASE_URL must be configured for PostgreSQL migrations")
+url = make_url(database_url)
+if url.drivername == "postgresql":
+    url = url.set(drivername="postgresql+psycopg")
+database_url = url.render_as_string(hide_password=False)
 config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 target_metadata = None
 

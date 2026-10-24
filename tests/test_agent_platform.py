@@ -10,6 +10,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 os.environ["LITLOOM_DATABASE_URL"] = ""
+os.environ["LITLOOM_TESTING"] = "1"
 import app
 
 
@@ -1196,6 +1197,363 @@ class AgentPlatformTests(unittest.TestCase):
         self.assertTrue(second["deduplicated"])
         with app.db_session() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM attachments WHERE paper_id=?", (paper_id,)).fetchone()[0], 1)
+
+    def test_public_pdf_downloader_resolves_openalex_oa_location_after_bad_landing_page(self):
+        paper_id, _ = app.upsert_paper({
+            "title": "Open access fixture",
+            "doi": "10.5555/open.fixture",
+            "pdf_url": "https://publisher.example/article/123",
+        }, source="manual")
+        pdf_bytes = b"%PDF-1.7\nopen access fixture\n%%EOF"
+        requested = []
+
+        class Response:
+            def __init__(self, url, body):
+                self.url = url
+                self.parts = [body, b""]
+                self.headers = {}
+            def __enter__(self):
+                return self
+            def __exit__(self, *_args):
+                return False
+            def read(self, _size):
+                return self.parts.pop(0)
+            def geturl(self):
+                return self.url
+
+        def fake_urlopen(request, timeout=30):
+            target = request.full_url
+            requested.append(target)
+            body = b"<html>publisher landing page</html>" if "publisher.example" in target else pdf_bytes
+            return Response(target, body)
+
+        openalex_work = {
+            "id": "https://openalex.org/W1234567890",
+            "best_oa_location": {"is_oa": True, "pdf_url": "https://repository.example/paper.pdf"},
+            "locations": [
+                {"is_oa": False, "pdf_url": "https://closed.example/paper.pdf"},
+                {"is_oa": True, "pdf_url": "https://repository.example/paper.pdf"},
+            ],
+        }
+        with patch.object(app, "http_json", return_value=openalex_work) as lookup, patch.object(app, "urlopen", side_effect=fake_urlopen):
+            result = app.download_public_pdf(paper_id)
+
+        self.assertTrue(result["downloaded"])
+        self.assertEqual(result["source_url"], "https://repository.example/paper.pdf")
+        self.assertEqual(requested, [
+            "https://publisher.example/article/123",
+            "https://repository.example/paper.pdf",
+        ])
+        self.assertTrue(
+            any("api.openalex.org/works/https://doi.org/" in call.args[0] for call in lookup.call_args_list)
+        )
+        self.assertTrue(
+            any("europepmc/webservices/rest/search" in call.args[0] for call in lookup.call_args_list)
+        )
+        self.assertTrue(
+            any("api.semanticscholar.org/graph/v1/paper/DOI:" in call.args[0] for call in lookup.call_args_list)
+        )
+        with app.db_session() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM attachments WHERE paper_id=?", (paper_id,)).fetchone()[0], 1)
+
+    def test_pmc_landing_url_expands_to_stable_open_pdf_routes(self):
+        candidates = app.paper_pdf_candidates(
+            {
+                "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234567/",
+                "pdf_url": "",
+            }
+        )
+        self.assertIn(
+            "https://europepmc.org/articles/PMC1234567?pdf=render", candidates
+        )
+        self.assertIn(
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/pdf/", candidates
+        )
+
+    def test_public_pdf_downloader_resolves_wiley_doi_to_pmc_oa_package(self):
+        doi = "10.5555/wiley.pmc.fixture"
+        paper_id, _ = app.upsert_paper(
+            {
+                "title": "Wiley paper with a public PMC copy",
+                "doi": doi,
+                "url": "https://onlinelibrary.wiley.com/doi/10.5555/wiley.pmc.fixture",
+                "pdf_url": "https://onlinelibrary.wiley.com/doi/pdf/10.5555/wiley.pmc.fixture",
+                "year": 2024,
+            },
+            source="manual",
+        )
+        pdf_bytes = b"%PDF-1.7\nopen manuscript\n%%EOF"
+        requested = []
+
+        class Response:
+            headers = {}
+
+            def __init__(self, url, body):
+                self.url = url
+                self.parts = [body, b""]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _size=None):
+                return self.parts.pop(0)
+
+            def geturl(self):
+                return self.url
+
+        def fake_http_json(url, timeout=15):
+            if "api.openalex.org" in url:
+                return {"id": "https://openalex.org/W1", "best_oa_location": None, "locations": []}
+            if "europepmc/webservices/rest/search" in url:
+                return {"resultList": {"result": [{"doi": doi, "pmcid": "PMC7654321"}]}}
+            if "api.semanticscholar.org" in url:
+                return {"openAccessPdf": None}
+            raise AssertionError(url)
+
+        def fake_urlopen(request, timeout=30):
+            target = request.full_url
+            requested.append(target)
+            if "onlinelibrary.wiley.com" in target:
+                raise app.HTTPError(target, 403, "Forbidden", {}, None)
+            if "europepmc.org/articles/" in target or "pmc.ncbi.nlm.nih.gov/articles/" in target:
+                return Response(target, b"<html>not a pdf route</html>")
+            if "oa.fcgi" in target:
+                return Response(
+                    target,
+                    b'<OA><records><record><link format="pdf" href="ftp://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_pdf/example.pdf" /></record></records></OA>',
+                )
+            return Response(target, pdf_bytes)
+
+        with patch.object(app, "http_json", side_effect=fake_http_json), patch.object(
+            app, "urlopen", side_effect=fake_urlopen
+        ):
+            manifest = app.http_bytes(
+                "https://www.ncbi.nlm.nih.gov/pmc/utils/oa/oa.fcgi?id=PMC7654321",
+                timeout=8,
+            )
+            self.assertEqual(
+                app.ET.fromstring(manifest).find(".//link").get("format"), "pdf"
+            )
+            resolved = app.europepmc_public_pdf_candidates(doi)
+            self.assertIn(
+                "https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_pdf/example.pdf", resolved
+            )
+            try:
+                result = app.download_public_pdf(paper_id)
+            except ValueError as exc:
+                self.fail(f"{exc}; requests={requested}")
+
+        self.assertTrue(result["downloaded"])
+        self.assertIn(
+            "https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_pdf/example.pdf", requested
+        )
+        self.assertEqual(
+            result["source_url"],
+            "https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_pdf/example.pdf",
+        )
+
+    def test_public_pdf_downloader_resolves_semantic_scholar_open_copy(self):
+        doi = "10.5555/semantic.fixture"
+        paper_id, _ = app.upsert_paper(
+            {"title": "Semantic Scholar open copy", "doi": doi}, source="manual"
+        )
+        pdf_url = "https://repository.example/semantic-copy.pdf"
+        pdf_bytes = b"%PDF-1.7\nsemantic copy\n%%EOF"
+
+        class Response:
+            headers = {}
+
+            def __init__(self, url, body):
+                self.url = url
+                self.parts = [body, b""]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _size):
+                return self.parts.pop(0)
+
+            def geturl(self):
+                return self.url
+
+        def fake_http_json(url, timeout=15):
+            if "api.openalex.org" in url:
+                return {"id": "https://openalex.org/W2", "best_oa_location": None, "locations": []}
+            if "europepmc/webservices/rest/search" in url:
+                return {"resultList": {"result": []}}
+            if "api.semanticscholar.org" in url:
+                return {"openAccessPdf": {"url": pdf_url}}
+            raise AssertionError(url)
+
+        def fake_urlopen(request, timeout=30):
+            return Response(request.full_url, pdf_bytes)
+
+        with patch.object(app, "http_json", side_effect=fake_http_json), patch.object(
+            app, "urlopen", side_effect=fake_urlopen
+        ):
+            result = app.download_public_pdf(paper_id)
+
+        self.assertTrue(result["downloaded"])
+        self.assertEqual(result["source_url"], pdf_url)
+
+    def test_publisher_403_explains_institutional_access_without_trying_doi_landing(self):
+        doi = "10.5555/closed.wiley.fixture"
+        publisher_pdf = "https://onlinelibrary.wiley.com/doi/pdf/10.5555/closed.wiley.fixture"
+        paper_id, _ = app.upsert_paper(
+            {
+                "title": "Closed Wiley paper",
+                "doi": doi,
+                "pdf_url": publisher_pdf,
+                "url": "https://doi.org/" + doi,
+            },
+            source="manual",
+        )
+        requested = []
+
+        class Response:
+            headers = {}
+
+            def __init__(self, url):
+                self.url = url
+                self.parts = [b"<html>landing page</html>", b""]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _size):
+                return self.parts.pop(0)
+
+            def geturl(self):
+                return self.url
+
+        def fake_http_json(url, timeout=15):
+            if "api.openalex.org" in url:
+                return {"id": "https://openalex.org/W3", "best_oa_location": None, "locations": []}
+            if "europepmc/webservices/rest/search" in url:
+                return {"resultList": {"result": []}}
+            if "api.semanticscholar.org" in url:
+                return {"openAccessPdf": None}
+            raise AssertionError(url)
+
+        def fake_urlopen(request, timeout=30):
+            target = request.full_url
+            requested.append(target)
+            if "onlinelibrary.wiley.com" in target:
+                raise app.HTTPError(target, 403, "Forbidden", {}, None)
+            return Response(target)
+
+        with patch.object(app, "http_json", side_effect=fake_http_json), patch.object(
+            app, "urlopen", side_effect=fake_urlopen
+        ):
+            with self.assertRaisesRegex(ValueError, "学校 VPN/机构账号"):
+                app.download_public_pdf(paper_id)
+
+        self.assertIn(publisher_pdf, requested)
+        self.assertFalse(any("doi.org/" in target for target in requested))
+
+    def test_public_pdf_downloader_reports_access_and_no_open_pdf(self):
+        paper_id, _ = app.upsert_paper({
+            "title": "Closed access fixture",
+            "doi": "10.5555/closed.fixture",
+        }, source="manual")
+
+        def no_openalex_pdf(_url, timeout=15):
+            return {"best_oa_location": None, "primary_location": None, "locations": []}
+
+        class LandingResponse:
+            def __init__(self):
+                self.parts = [b"<html>publisher page</html>", b""]
+                self.headers = {}
+            def __enter__(self):
+                return self
+            def __exit__(self, *_args):
+                return False
+            def read(self, _size):
+                return self.parts.pop(0)
+            def geturl(self):
+                return "https://doi.org/10.5555/closed.fixture"
+
+        with patch.object(app, "http_json", side_effect=no_openalex_pdf), patch.object(app, "urlopen", return_value=LandingResponse()):
+            with self.assertRaisesRegex(ValueError, "OpenAlex 未找到标题/DOI 精确匹配的开放获取 PDF"):
+                app.download_public_pdf(paper_id)
+
+    def test_openalex_pdf_candidates_only_use_open_access_pdf_urls(self):
+        with patch.object(app, "http_json", return_value={
+            "id": "https://openalex.org/W1234567890",
+            "best_oa_location": {"pdf_url": "https://oa.example/a.pdf"},
+            "primary_location": {"is_oa": False, "pdf_url": "https://closed.example/a.pdf"},
+            "locations": [
+                {"is_oa": True, "pdf_url": "https://oa.example/a.pdf"},
+                {"is_oa": True, "pdf_url": "https://oa.example/b.pdf"},
+                {"is_oa": False, "pdf_url": "https://closed.example/b.pdf"},
+            ],
+        }):
+            candidates = app.openalex_public_pdf_candidates("10.5555/example")
+        self.assertEqual(candidates, ["https://oa.example/a.pdf", "https://oa.example/b.pdf"])
+        self.assertEqual(
+            app.paper_pdf_candidates({"doi": "10.48550/arXiv.1706.03762"}),
+            ["https://arxiv.org/pdf/1706.03762"],
+        )
+
+    def test_source_links_that_resolve_to_pdf_are_used_as_download_candidates(self):
+        cases = [
+            ("https://publisher.example/article/123?pdf=render", "https://publisher.example/article/123?pdf=render"),
+            ("https://publisher.example/article/123?download=1", "https://publisher.example/article/123?download=1"),
+            ("https://publisher.example/article/123?format=pdf", "https://publisher.example/article/123?format=pdf"),
+            ("https://publisher.example/redirect?resource=https%3A%2F%2Ffiles.example%2Fpaper.pdf", "https://publisher.example/redirect?resource=https%3A%2F%2Ffiles.example%2Fpaper.pdf"),
+            ("https://publisher.example/article/123/pdf", "https://publisher.example/article/123/pdf"),
+            ("https://arxiv.org/html/1706.03762v2", "https://arxiv.org/pdf/1706.03762"),
+        ]
+        for source_url, expected in cases:
+            with self.subTest(source_url=source_url):
+                self.assertIn(expected, app.paper_pdf_candidates({"url": source_url}))
+
+    def test_public_pdf_downloader_uses_verified_title_when_doi_is_missing(self):
+        title = "A precise title for public PDF lookup"
+        paper_id, _ = app.upsert_paper({"title": title, "year": 2024}, source="manual")
+        pdf_bytes = b"%PDF-1.7\nverified title fixture\n%%EOF"
+        work = {
+            "title": title,
+            "publication_year": 2024,
+            "best_oa_location": {"pdf_url": "https://repository.example/verified.pdf"},
+        }
+
+        class Response:
+            headers = {}
+            def __init__(self):
+                self.parts = [pdf_bytes, b""]
+            def __enter__(self):
+                return self
+            def __exit__(self, *_args):
+                return False
+            def read(self, _size):
+                return self.parts.pop(0)
+            def geturl(self):
+                return "https://repository.example/verified.pdf"
+
+        with patch.object(app, "http_json", return_value={"results": [work]}), patch.object(app, "urlopen", return_value=Response()):
+            result = app.download_public_pdf(paper_id)
+        self.assertTrue(result["downloaded"])
+        self.assertEqual(result["source_url"], "https://repository.example/verified.pdf")
+
+    def test_openalex_title_fallback_rejects_unrelated_and_wrong_year_matches(self):
+        title = "Reliable multimodal document understanding"
+        with patch.object(app, "http_json", return_value={"results": [
+            {"title": "Reliable multimodal document understanding", "publication_year": 2017, "best_oa_location": {"pdf_url": "https://old.example/paper.pdf"}},
+            {"title": "A different method for document understanding", "publication_year": 2024, "best_oa_location": {"pdf_url": "https://other.example/paper.pdf"}},
+            {"title": "Reliable multimodal document understanding", "publication_year": 2024, "best_oa_location": {"pdf_url": "https://matching.example/paper.pdf"}},
+        ]}):
+            candidates = app.openalex_public_pdf_candidates(title=title, year=2024)
+        self.assertEqual(candidates, ["https://matching.example/paper.pdf"])
 
     def test_search_agent_executes_reviewed_planner_query_plan(self):
         captured = {}

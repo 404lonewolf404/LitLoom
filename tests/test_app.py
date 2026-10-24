@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 os.environ["LITLOOM_DATABASE_URL"] = ""
+os.environ["LITLOOM_TESTING"] = "1"
 import app
 
 
@@ -22,6 +23,8 @@ class LiteratureDeskTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
+        self._auth_mode = os.environ.pop("LITLOOM_AUTH_MODE", None)
+        self._tenant_mode = os.environ.pop("LITLOOM_TENANT_MODE", None)
         self._env_api_key = os.environ.pop("LIT_AGENT_API_KEY", None)
         self._env_api_key_file = os.environ.pop("LIT_AGENT_API_KEY_FILE", None)
         app.DATA_DIR = root / "data"
@@ -32,6 +35,10 @@ class LiteratureDeskTests(unittest.TestCase):
         app.init_db()
 
     def tearDown(self):
+        if self._auth_mode is not None:
+            os.environ["LITLOOM_AUTH_MODE"] = self._auth_mode
+        if self._tenant_mode is not None:
+            os.environ["LITLOOM_TENANT_MODE"] = self._tenant_mode
         if self._env_api_key is not None:
             os.environ["LIT_AGENT_API_KEY"] = self._env_api_key
         if self._env_api_key_file is not None:
@@ -700,6 +707,59 @@ class LiteratureDeskTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join(timeout=2)
+
+    def test_discovery_candidate_existing_in_library_is_marked_without_dropping_result(self):
+        original = app.SOURCE_SEARCH["arxiv"]
+        app.SOURCE_SEARCH["arxiv"] = lambda *_args: [
+            {
+                "title": "Already saved discovery candidate fixture",
+                "abstract": "A candidate that was independently added to the library.",
+                "year": 2026,
+                "doi": "10.4242/already-saved-candidate",
+                "external_id": "already-saved-candidate",
+            },
+            {
+                "title": "New discovery candidate fixture",
+                "abstract": "A new candidate that has not been saved yet.",
+                "year": 2026,
+                "doi": "10.4242/new-candidate",
+                "external_id": "new-candidate",
+            },
+        ]
+        try:
+            result = app.run_query(
+                "candidate library identity",
+                ["arxiv"],
+                10,
+                options={"expand_concepts": False, "ai_screen": False},
+            )
+        finally:
+            app.SOURCE_SEARCH["arxiv"] = original
+
+        library_id, created = app.upsert_paper(
+            {
+                "title": "Already saved discovery candidate fixture",
+                "year": 2026,
+                "doi": "https://doi.org/10.4242/ALREADY-SAVED-CANDIDATE",
+            },
+            source="manual",
+        )
+        self.assertTrue(created)
+
+        snapshot = app.run_results_snapshot(result["id"])
+        self.assertEqual(len(snapshot["papers"]), 2)
+        marked = next(
+            item
+            for item in snapshot["papers"]
+            if item["title"] == "Already saved discovery candidate fixture"
+        )
+        fresh = next(
+            item
+            for item in snapshot["papers"]
+            if item["title"] == "New discovery candidate fixture"
+        )
+        self.assertEqual(marked["in_library_paper_id"], library_id)
+        self.assertEqual(fresh["in_library_paper_id"], "")
 
     def test_legacy_terminal_candidate_rows_reload_with_retrieval_metadata(self):
         """Pre-split candidate snapshots remain visible after a terminal reload."""
@@ -2540,6 +2600,31 @@ class LiteratureDeskTests(unittest.TestCase):
         self.assertEqual(len(cards), 1)
         self.assertEqual(notes[-1]["content"]["notes"], "note v1")
 
+    def test_delete_paper_cascades_revision_history_and_reading_card(self):
+        paper_id, _ = app.upsert_paper({"title": "Delete revision fixture"}, source="manual")
+        with app.db_session() as db:
+            app.record_paper_revision(db, paper_id, "notes", {"notes": "temporary"})
+            app.save_reading_card(db, paper_id, {"research_question": "temporary card"})
+            self.assertIsNotNone(
+                db.execute(
+                    "SELECT 1 FROM paper_revisions WHERE paper_id=?", (paper_id,)
+                ).fetchone()
+            )
+        result = app.delete_papers([paper_id])
+        self.assertEqual(result["deleted"], 1)
+        with app.db_session() as db:
+            self.assertIsNone(db.execute("SELECT 1 FROM papers WHERE id=?", (paper_id,)).fetchone())
+            self.assertIsNone(
+                db.execute(
+                    "SELECT 1 FROM paper_revisions WHERE paper_id=?", (paper_id,)
+                ).fetchone()
+            )
+            self.assertIsNone(
+                db.execute(
+                    "SELECT 1 FROM reading_cards WHERE paper_id=?", (paper_id,)
+                ).fetchone()
+            )
+
     def test_run_detail_decodes_only_safe_source_and_variant_fields(self):
         run_id = "run-detail-fixture"
         detail = [{"source": "arxiv", "status": "ok", "fetched": 8, "accepted": 5, "filtered": 3, "new": 2, "duplicates": 3, "raw_secret": "omit", "variants": [{"id": "primary", "query": "vision reasoning", "kind": "原始问题", "fetched": 8, "accepted": 5, "private_payload": "omit"}]}]
@@ -3835,6 +3920,47 @@ class LiteratureDeskTests(unittest.TestCase):
         self.assertFalse(first["cached"])
         self.assertTrue(second["cached"])
         self.assertNotEqual(first["sha256"], third["sha256"])
+
+    def test_pdf_page_http_route_returns_only_requested_page(self):
+        if __import__("importlib").util.find_spec("fitz") is None:
+            self.skipTest("PyMuPDF is optional")
+        if __import__("importlib").util.find_spec("reportlab") is None:
+            self.skipTest("reportlab is only used to build the PDF fixture")
+        from io import BytesIO
+        from reportlab.pdfgen import canvas
+
+        paper_id, _ = app.upsert_paper({"title": "PDF page route fixture"}, source="manual")
+        buffer = BytesIO()
+        pdf = canvas.Canvas(buffer)
+        pdf.drawString(70, 740, "Route page one")
+        pdf.showPage()
+        pdf.drawString(70, 740, "Route page two")
+        pdf.save()
+        content = buffer.getvalue()
+        digest = hashlib.sha256(content).hexdigest()
+        app.FILES_DIR.mkdir(parents=True, exist_ok=True)
+        stored_name = digest + ".pdf"
+        (app.FILES_DIR / stored_name).write_bytes(content)
+        attachment_id = "pdf-page-route-attachment"
+        with app.db_session() as db:
+            db.execute(
+                "INSERT INTO attachments(id,paper_id,original_name,stored_name,sha256,byte_size,added_at) VALUES(?,?,?,?,?,?,?)",
+                (attachment_id, paper_id, "route.pdf", stored_name, digest, len(content), app.now_iso()),
+            )
+        server, thread, base = self._start_api_server()
+        try:
+            url = f"{base}/api/papers/{quote(paper_id, safe='')}/pdf-page?attachment_id={quote(attachment_id, safe='')}&page=2"
+            with urlopen(url, timeout=10) as response:
+                body = response.read()
+                self.assertEqual(response.status, 200)
+                self.assertEqual(response.headers.get_content_type(), "image/jpeg")
+                self.assertTrue(body.startswith(b"\xff\xd8"))
+            with self.assertRaises(HTTPError) as invalid:
+                urlopen(url.replace("page=2", "page=0"), timeout=10)
+            self.assertEqual(invalid.exception.code, 400)
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
 
     def test_visual_evidence_requires_a_rendered_page_and_text_quotes_still_verify(self):
         analysis = {"evidence_spans": [{"claim": "bad visual page", "page": 1, "quote": "valid text quote", "support": "direct"}], "visual_evidence": [
@@ -5355,7 +5481,7 @@ class LiteratureDeskTests(unittest.TestCase):
         finally:
             app.get_paper_pages_for_ai, app.model_json_request = original_pages, original_model
 
-        self.assertEqual(result["saved_items"], 3)
+        self.assertEqual(result["saved_items"], 4)
         self.assertEqual(result["analysis"]["prereading_guide"]["glossary"][0]["term"], "cross-attention")
         self.assertEqual(result["analysis"]["prereading_guide"]["notation"][0]["symbol"], "alpha_i")
         self.assertEqual(app.study_items_page(query="cross-attention")["total"], 1)
@@ -5455,6 +5581,31 @@ class LiteratureDeskTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join(timeout=3)
+
+    def test_prereading_route_is_normalized_and_legacy_guides_get_a_route(self):
+        explicit = app.normalize_prereading_guide(
+            {
+                "learning_route": [
+                    {"step": 1, "title": "先理解注意力", "goal": "能解释权重如何聚合", "estimated_minutes": 8}
+                ],
+                "prerequisites": [],
+            }
+        )
+        self.assertEqual(explicit["learning_route"][0]["step"], "1")
+        self.assertEqual(explicit["learning_route"][0]["title"], "先理解注意力")
+        legacy = app.normalize_prereading_guide(
+            {
+                "prerequisites": [
+                    {
+                        "concept": "卷积",
+                        "why_needed": "理解局部特征提取",
+                        "minimum_to_know": "卷积核在局部窗口上滑动",
+                    }
+                ]
+            }
+        )
+        self.assertEqual(legacy["learning_route"][0]["title"], "卷积")
+        self.assertIn("局部窗口", legacy["learning_route"][0]["goal"])
 
     def test_prereading_spaced_review_transitions_and_due_queue(self):
         state = {"mastery": "new", "review_interval_days": 0, "review_count": 0, "review_lapses": 0, "review_ease": 2.5}
@@ -6224,6 +6375,56 @@ class LiteratureDeskTests(unittest.TestCase):
         self.assertEqual(len(calls), app.TAVILY_VERIFY_MAX_TITLE_ONLY)
         self.assertEqual(fast_flags, [True] * app.TAVILY_VERIFY_MAX_TITLE_ONLY)
         self.assertTrue(all(row["discovery_only"] for row in rows))
+
+    def test_tavily_model_search_uses_fast_depth_and_one_title_verification(self):
+        """The model lane must keep web discovery bounded without losing leads."""
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return json.dumps({"results": [
+                    {"title": f"Fast web lead {index}", "url": f"https://example.org/fast-{index}", "content": "food volume estimation", "score": 0.9}
+                    for index in range(5)
+                ]}).encode("utf-8")
+
+        originals = (app._tavily_api_key, app.urlopen, app._verify_tavily_result)
+        captured = {}
+        verified = []
+
+        def fake_open(request, **_kwargs):
+            captured["payload"] = json.loads(request.data.decode("utf-8"))
+            return FakeResponse()
+
+        def fake_verify(item):
+            verified.append(item["url"])
+            return {
+                **item,
+                "source": "tavily",
+                "external_id": item["url"],
+                "verification_status": "unverified",
+                "verification_sources": [],
+                "discovery_only": True,
+            }
+
+        app._tavily_api_key = lambda: "fixture-tavily-key"
+        app.urlopen = fake_open
+        app._verify_tavily_result = fake_verify
+        with app.TAVILY_VERIFY_CACHE_LOCK:
+            app.TAVILY_VERIFY_CACHE.clear()
+        try:
+            with app.fast_model_search_source_budget():
+                rows = app.search_tavily("food volume estimation", 5)
+        finally:
+            app._tavily_api_key, app.urlopen, app._verify_tavily_result = originals
+            with app.TAVILY_VERIFY_CACHE_LOCK:
+                app.TAVILY_VERIFY_CACHE.clear()
+        self.assertEqual(len(rows), 5)
+        self.assertEqual(captured["payload"]["search_depth"], "basic")
+        self.assertEqual(len(verified), 1)
 
     def test_model_search_tool_can_select_tavily_lane(self):
         originals = (app._tavily_api_key, app.SOURCE_SEARCH["tavily"])
@@ -7512,6 +7713,236 @@ class LiteratureDeskTests(unittest.TestCase):
         self.assertEqual([item["segment_key"] for item in first["segments"]], [item["segment_key"] for item in second["segments"]])
         self.assertEqual([item["page"] for item in first["segments"]], [2, 2])
         self.assertEqual(first["segments"][0]["annotation"], {})
+        self.assertEqual(first["block_total"], 1)
+        self.assertEqual(first["blocks"][0]["paragraph_count"], 2)
+        self.assertEqual(first["blocks"][0]["page_start"], 2)
+        self.assertEqual(first["blocks"][0]["page_end"], 2)
+        self.assertEqual(first["page_numbers"], [2])
+        self.assertEqual(
+            [item["block_key"] for item in first["blocks"]],
+            [item["block_key"] for item in second["blocks"]],
+        )
+
+    def test_reading_blocks_follow_sections_and_keep_visual_captions_with_local_explanation(self):
+        paper_id = "structured-block-paper"
+        attachment_id = "structured-block-attachment"
+        now = app.now_iso()
+        with app.db_session() as db:
+            db.execute(
+                "INSERT INTO papers(id,title,title_key,created_at,updated_at) VALUES(?,?,?,?,?)",
+                (paper_id, "Structured block paper", "structured block paper", now, now),
+            )
+            db.execute(
+                "INSERT INTO attachments(id,paper_id,original_name,stored_name,sha256,byte_size,added_at) VALUES(?,?,?,?,?,?,?)",
+                (attachment_id, paper_id, "paper.pdf", "structured.pdf", "b" * 64, 1, now),
+            )
+            pages = [
+                (
+                    1,
+                    "1 Introduction\n\nWe estimate food volume from a single image.\n\n"
+                    "Our goal is to reduce measurement effort.\n\n"
+                    "2 Related Work\n\nEarlier work uses geometric priors.",
+                ),
+                (
+                    2,
+                    "3 Method\n\nWe combine visual cues with shape constraints.\n\n"
+                    "Figure 1: Overview of the proposed pipeline.\n\n"
+                    "The figure shows how image features enter the volume estimator.\n\n"
+                    "Experiments use a held-out set.",
+                ),
+            ]
+            for page, text in pages:
+                db.execute(
+                    "INSERT INTO document_pages(attachment_id,paper_id,page_number,text,char_count,quality,extractor,text_sha256,extracted_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                    (attachment_id, paper_id, page, text, len(text), "good", "fixture", str(page) * 64, now),
+                )
+        blocks = app.reading_segments(paper_id)["blocks"]
+        self.assertEqual(
+            [block["section_title"] for block in blocks],
+            ["Introduction", "Related Work", "Method", "Method", "Method"],
+        )
+        visual = next(block for block in blocks if block["block_type"] == "visual")
+        self.assertIn("Figure 1", visual["text"])
+        self.assertIn("The figure shows", visual["text"])
+        method_body = next(
+            block for block in blocks
+            if block["section_title"] == "Method" and block["block_type"] == "text"
+        )
+        self.assertIn("shape constraints", method_body["text"])
+        self.assertNotIn("Figure 1", method_body["text"])
+        experiment = blocks[-1]
+        self.assertEqual(experiment["section_title"], "Method")
+        self.assertIn("Experiments use", experiment["text"])
+        self.assertNotIn("held-out", method_body["text"])
+
+    def test_reading_blocks_split_embedded_headings_when_pdf_has_no_blank_lines(self):
+        paper_id = "embedded-heading-paper"
+        attachment_id = "embedded-heading-attachment"
+        now = app.now_iso()
+        with app.db_session() as db:
+            db.execute(
+                "INSERT INTO papers(id,title,title_key,created_at,updated_at) VALUES(?,?,?,?,?)",
+                (paper_id, "Embedded heading paper", "embedded heading paper", now, now),
+            )
+            db.execute(
+                "INSERT INTO attachments(id,paper_id,original_name,stored_name,sha256,byte_size,added_at) VALUES(?,?,?,?,?,?,?)",
+                (attachment_id, paper_id, "paper.pdf", "embedded.pdf", "e" * 64, 1, now),
+            )
+            text = (
+                "1 Introduction\nWe define the task from a single food image. "
+                "The goal is robust volume estimation.\n2 Method\n"
+                "We combine visual features with geometric constraints."
+            )
+            db.execute(
+                "INSERT INTO document_pages(attachment_id,paper_id,page_number,text,char_count,quality,extractor,text_sha256,extracted_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                (attachment_id, paper_id, 1, text, len(text), "good", "fixture", "e" * 64, now),
+            )
+        blocks = app.reading_segments(paper_id)["blocks"]
+        self.assertEqual([block["section_title"] for block in blocks], ["Introduction", "Method"])
+        self.assertIn("single food image", blocks[0]["text"])
+        self.assertNotIn("2 Method", blocks[0]["text"])
+        self.assertIn("geometric constraints", blocks[1]["text"])
+
+    def test_ai_reading_segmentation_can_split_rule_group_and_reuses_cached_decisions(self):
+        paper_id = "semantic-reading-paper"
+        attachment_id = "semantic-reading-attachment"
+        now = app.now_iso()
+        with app.db_session() as db:
+            db.execute(
+                "INSERT INTO papers(id,title,title_key,abstract,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                (paper_id, "Semantic reading paper", "semantic reading paper", "A short abstract.", now, now),
+            )
+            db.execute(
+                "INSERT INTO attachments(id,paper_id,original_name,stored_name,sha256,byte_size,added_at) VALUES(?,?,?,?,?,?,?)",
+                (attachment_id, paper_id, "paper.pdf", "semantic.pdf", "f" * 64, 1, now),
+            )
+            for page, text in (
+                (1, "1 Introduction\n\nWe estimate food volume from one image by studying visual measurement reliability."),
+                (2, "The paper then introduces a separate evaluation protocol for testing robustness across held-out meals."),
+            ):
+                db.execute(
+                    "INSERT INTO document_pages(attachment_id,paper_id,page_number,text,char_count,quality,extractor,text_sha256,extracted_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                    (attachment_id, paper_id, page, text, len(text), "good", "fixture", str(page) * 64, now),
+                )
+
+        baseline = app.reading_segments(paper_id)["blocks"]
+        self.assertEqual(len(baseline), 1)
+        calls = []
+        original = app.limited_text_model_request
+
+        def fake_model(prompt, payload, **kwargs):
+            calls.append((prompt, payload, kwargs))
+            candidate = payload["comparisons"][0]
+            return {
+                "decisions": [
+                    {
+                        "id": candidate["id"],
+                        "merge": False,
+                        "reason": "后一段转入独立的评测任务",
+                    }
+                ]
+            }
+
+        app.limited_text_model_request = fake_model
+        try:
+            result = app.organize_reading_blocks(paper_id, {"consent": True})
+            organized = app.reading_segments(paper_id)
+            reused = app.organize_reading_blocks(paper_id, {"consent": True})
+        finally:
+            app.limited_text_model_request = original
+
+        self.assertEqual(result["mode"], "hybrid_semantic")
+        self.assertFalse(result["reused"])
+        self.assertTrue(reused["reused"])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][2]["task"], "reading_segmentation")
+        self.assertEqual(organized["segmentation"]["mode"], "hybrid_semantic")
+        self.assertEqual(organized["block_total"], 2)
+        self.assertIn("volume", organized["blocks"][0]["text"])
+        self.assertIn("evaluation protocol", organized["blocks"][1]["text"])
+
+    def test_ai_reading_segmentation_requires_explicit_text_consent(self):
+        with self.assertRaisesRegex(ValueError, "确认允许"):
+            app.organize_reading_blocks("missing-paper", {"consent": False})
+
+    def test_ai_reading_segmentation_uses_persistent_background_job(self):
+        paper_id, _ = app.upsert_paper({"title": "Segmentation job fixture"}, source="manual")
+
+        class Executor:
+            def submit(self, *_args, **_kwargs):
+                return None
+
+        original_executor = app.AI_JOB_EXECUTOR
+        original_fulltext = app.paper_has_fulltext_source
+        app.AI_JOB_EXECUTOR = Executor()
+        app.paper_has_fulltext_source = lambda _paper_id: True
+        try:
+            with self.assertRaisesRegex(ValueError, "确认允许"):
+                app.submit_ai_job(paper_id, "reading_segmentation", {"consent": False})
+            created = app.submit_ai_job(
+                paper_id, "reading_segmentation", {"consent": True, "force": True}
+            )
+        finally:
+            app.AI_JOB_EXECUTOR = original_executor
+            app.paper_has_fulltext_source = original_fulltext
+
+        self.assertFalse(created["deduplicated"])
+        self.assertEqual(created["job"]["job_type"], "reading_segmentation")
+        self.assertEqual(created["job"]["options"]["template"], "semantic_reading_blocks_v1")
+        self.assertTrue(created["job"]["options"]["consent"])
+        self.assertTrue(created["job"]["options"]["force"])
+        original_organizer = app.organize_reading_blocks
+        app.organize_reading_blocks = lambda *_args, **_kwargs: {
+            "artifact_id": "semantic-fixture-artifact",
+            "mode": "hybrid_semantic",
+            "reviewed_boundaries": 1,
+            "merged_boundaries": 0,
+            "model": "fixture-model",
+        }
+        try:
+            app.run_ai_job(created["job"]["id"])
+        finally:
+            app.organize_reading_blocks = original_organizer
+        finished = app.get_ai_job(created["job"]["id"])
+        self.assertEqual(finished["status"], "success")
+        self.assertEqual(finished["message"], "阅读块语义整理已保存")
+
+    def test_ai_reading_segmentation_http_route_requires_consent_and_queues_job(self):
+        calls = []
+        original_ready = app.Handler._fulltext_ready
+        original_submit = app.submit_ai_job
+        app.Handler._fulltext_ready = lambda *_args: {"enabled": True}
+        app.submit_ai_job = lambda paper_id, kind, data: calls.append(
+            (paper_id, kind, data)
+        ) or {"job": {"id": "semantic-http-job", "job_type": kind}}
+        server, thread, base = self._start_api_server()
+        try:
+            with self.assertRaises(HTTPError) as missing_consent:
+                self._api_json(
+                    base,
+                    "/api/papers/semantic-http-paper/ai-reading-segmentation",
+                    method="POST",
+                    value={"consent": False},
+                    expected_status=202,
+                )
+            self.assertEqual(missing_consent.exception.code, 400)
+            response = self._api_json(
+                base,
+                "/api/papers/semantic-http-paper/ai-reading-segmentation",
+                method="POST",
+                value={"consent": True, "force": False},
+                expected_status=202,
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+            app.Handler._fulltext_ready = original_ready
+            app.submit_ai_job = original_submit
+
+        self.assertEqual(response["job"]["id"], "semantic-http-job")
+        self.assertEqual(calls[0][0:2], ("semantic-http-paper", "reading_segmentation"))
+        self.assertTrue(calls[0][2]["consent"])
 
     def test_paragraph_analysis_persists_and_reuses_annotation(self):
         paper_id = "annotation-paper"
@@ -7535,7 +7966,7 @@ class LiteratureDeskTests(unittest.TestCase):
         app.limited_text_model_request = lambda *args, **kwargs: calls.append(1) or {"explanation": "解释", "role": "方法作用", "logic": "前提到结论", "terms": [], "formula": [], "evidence": "仅凭本段", "questions": []}
         try:
             segment = app.reading_segments(paper_id)["segments"][0]
-            payload = {"segment_key": segment["segment_key"], "text": segment["text"]}
+            payload = {"segment_key": segment["segment_key"], "text": segment["text"], "consent": True}
             result = app.analyze_paper_segment(paper_id, payload)
             reused = app.analyze_paper_segment(paper_id, payload)
         finally:
@@ -7543,6 +7974,126 @@ class LiteratureDeskTests(unittest.TestCase):
         self.assertFalse(result["reused"])
         self.assertTrue(reused["reused"])
         self.assertEqual(len(calls), 1)
+
+    def test_paragraph_analysis_carries_same_paper_prior_learning_memory(self):
+        paper_id = "context-paper"
+        attachment_id = "context-attachment"
+        other_paper_id = "other-context-paper"
+        now = app.now_iso()
+        with app.db_session() as db:
+            db.execute(
+                "INSERT INTO papers(id,title,title_key,abstract,topic,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+                (paper_id, "Context paper", "context paper", "The paper studies cumulative reasoning in food-volume estimation.", "food volume", now, now),
+            )
+            db.execute(
+                "INSERT INTO papers(id,title,title_key,abstract,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                (other_paper_id, "Other paper", "other paper", "FOREIGN PAPER SECRET", now, now),
+            )
+            db.execute(
+                "INSERT INTO attachments(id,paper_id,original_name,stored_name,sha256,byte_size,added_at) VALUES(?,?,?,?,?,?,?)",
+                (attachment_id, paper_id, "paper.pdf", "context.pdf", "c" * 64, 1, now),
+            )
+            for page, text in (
+                (1, "Introduction\n\nWe define the problem as estimating food volume from images."),
+                (2, "Method\n\nOur method combines image features with geometric constraints."),
+            ):
+                db.execute(
+                    "INSERT INTO document_pages(attachment_id,paper_id,page_number,text,char_count,quality,extractor,text_sha256,extracted_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                    (attachment_id, paper_id, page, text, len(text), "good", "fixture", str(page) * 64, now),
+                )
+
+        calls = []
+        original = app.limited_text_model_request
+
+        def fake_model(_prompt, payload, **_kwargs):
+            calls.append(payload)
+            return {
+                "explanation": "这一块承接前文的问题定义，转入方法设计。",
+                "role": "从问题过渡到方法",
+                "logic": "目标问题 → 方法组件",
+                "terms": [],
+                "formula": [],
+                "evidence": "作用关系参考前文；方法描述来自当前块。",
+                "questions": [],
+            }
+
+        app.limited_text_model_request = fake_model
+        try:
+            blocks = app.reading_segments(paper_id)["blocks"]
+            self.assertEqual(len(blocks), 2)
+            for block in blocks:
+                app.analyze_paper_segment(
+                    paper_id,
+                    {"segment_key": block["segment_key"], "text": block["text"], "consent": True},
+                )
+            self.assertFalse(app.reading_segments(paper_id)["blocks"][1]["annotation_stale"])
+            with app.db_session() as db:
+                earlier = db.execute(
+                    "SELECT id,analysis_json FROM paper_segment_annotations WHERE paper_id=? AND segment_key=?",
+                    (paper_id, blocks[0]["segment_key"]),
+                ).fetchone()
+                updated_earlier = json.loads(earlier["analysis_json"])
+                updated_earlier["explanation"] = "此前精读记忆刚刚更新，方法块应同步重读。"
+                db.execute(
+                    "UPDATE paper_segment_annotations SET analysis_json=? WHERE id=?",
+                    (json.dumps(updated_earlier, ensure_ascii=False), earlier["id"]),
+                )
+            self.assertTrue(app.reading_segments(paper_id)["blocks"][1]["annotation_stale"])
+            refreshed = app.analyze_paper_segment(
+                paper_id,
+                {"segment_key": blocks[1]["segment_key"], "text": blocks[1]["text"], "consent": True},
+            )
+        finally:
+            app.limited_text_model_request = original
+
+        second_payload = calls[1]
+        context_json = json.dumps(second_payload, ensure_ascii=False)
+        self.assertIn("The paper studies cumulative reasoning", context_json)
+        self.assertIn("这一块承接前文的问题定义", context_json)
+        self.assertIn("We define the problem", context_json)
+        self.assertIn("Our method combines", second_payload["paragraph"])
+        self.assertNotIn("FOREIGN PAPER SECRET", context_json)
+        self.assertEqual(second_payload["context"]["learning_memory"]["prior_blocks_total"], 1)
+        self.assertEqual(len(calls), 3)
+        self.assertFalse(refreshed["reused"])
+        self.assertIn("此前精读记忆刚刚更新", json.dumps(calls[2], ensure_ascii=False))
+        self.assertFalse(app.reading_segments(paper_id)["blocks"][1]["annotation_stale"])
+
+    def test_paragraph_reading_memory_is_bounded_and_keeps_opening_and_recent_blocks(self):
+        units = [
+            {
+                "block_index": index + 1,
+                "page": index + 1,
+                "text": f"原文块 {index} " + "背景线索。" * 100,
+                "annotation": {
+                    "explanation": f"前文块{index}记忆 " + "解释细节。" * 100,
+                    "role": "推动论文论证",
+                    "logic": "前提到结论",
+                },
+            }
+            for index in range(35)
+        ]
+        units.append(
+            {
+                "block_index": 36,
+                "page": 36,
+                "text": "Current block",
+                "annotation": {},
+            }
+        )
+        context = app._paragraph_reading_context(
+            {"title": "Long context paper", "abstract": "摘要。" * 2000},
+            units,
+            len(units) - 1,
+        )
+        memory = context["learning_memory"]
+        joined = "\n".join(memory["entries"])
+        self.assertEqual(memory["prior_blocks_total"], 35)
+        self.assertLessEqual(memory["included_blocks"], 18)
+        self.assertEqual(memory["omitted_blocks"], 35 - memory["included_blocks"])
+        self.assertLessEqual(len(joined), 5200)
+        self.assertIn("前文块0记忆", joined)
+        self.assertIn("前文块34记忆", joined)
 
 if __name__ == "__main__":
     unittest.main()

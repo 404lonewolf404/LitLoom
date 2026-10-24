@@ -258,6 +258,16 @@ def using_postgres() -> bool:
     return postgres_database_url().startswith(("postgresql://", "postgresql+psycopg://"))
 
 
+def sqlite_test_backend_enabled() -> bool:
+    """Allow SQLite only when a test process opts in explicitly."""
+    return _services().os.environ.get("LITLOOM_TESTING", "").strip().casefold() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def database_table_exists(db, table_name: str) -> bool:
     if using_postgres():
         return _services().postgres_table_exists(db, table_name)
@@ -275,10 +285,14 @@ def database_integrity_check(db) -> str:
 
 
 def connect(path: Path | None = None):
-    _services().DATA_DIR.mkdir(parents=True, exist_ok=True)
     database_url = _services().postgres_database_url()
     if database_url:
         return _services().postgres_connect(database_url)
+    if not _services().sqlite_test_backend_enabled():
+        raise RuntimeError(
+            "LitLoom 运行必须使用 PostgreSQL；请配置 LITLOOM_DATABASE_URL。"
+        )
+    _services().DATA_DIR.mkdir(parents=True, exist_ok=True)
     selected = _services().Path(path or _services()._active_database_path())
     selected.parent.mkdir(parents=True, exist_ok=True)
     db = _services().sqlite3.connect(selected, timeout=30)
@@ -359,6 +373,95 @@ def team_auth_enabled() -> bool:
     }
 
 
+def local_auto_login_enabled() -> bool:
+    """Enable passwordless sessions only for explicit local development use."""
+    return _services().os.environ.get(
+        "LITLOOM_LOCAL_AUTO_LOGIN", ""
+    ).strip().casefold() in {"1", "true", "yes", "on"}
+
+
+def create_local_auto_login_session() -> tuple[str, str, dict] | None:
+    """Create a normal session for a persistent local convenience account.
+
+    The account has a randomly generated, undisclosed password. Access is
+    granted only by the HTTP layer after verifying the direct peer is loopback.
+    This keeps browser use convenient without introducing a reusable default
+    credential.
+    """
+    if not _services().team_auth_enabled() or not _services().local_auto_login_enabled():
+        return None
+    username = _services().validate_username(
+        _services().os.environ.get("LITLOOM_LOCAL_AUTO_LOGIN_USERNAME", "local.default")
+    )
+    display_name = _services().clean_text(
+        _services().os.environ.get("LITLOOM_LOCAL_AUTO_LOGIN_DISPLAY_NAME", "本机默认用户"),
+        120,
+    ) or "本机默认用户"
+    with _services().DB_LOCK, _services().control_db_session() as db:
+        workspace = (
+            _services()._canonical_auth_workspace(db)
+            if _services()._postgres_shared_workspace_mode()
+            else _services()._auth_workspace(db)
+        )
+        user = db.execute(
+            "SELECT id,active FROM users WHERE username=? COLLATE NOCASE",
+            (username,),
+        ).fetchone()
+        if not user:
+            user_id, now = str(_services().uuid.uuid4()), _services().now_iso()
+            db.execute(
+                "INSERT INTO users(id,username,display_name,password_hash,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                (
+                    user_id,
+                    username,
+                    display_name,
+                    _services().hash_password(_services().new_token(48)),
+                    now,
+                    now,
+                ),
+            )
+            db.execute(
+                "INSERT INTO workspace_memberships(workspace_id,user_id,role,created_at) VALUES(?,?,?,?)",
+                (workspace["id"], user_id, "researcher", now),
+            )
+            _services().record_audit(
+                db,
+                "auth.local_auto_user_created",
+                "user",
+                user_id,
+                {"workspace_id": workspace["id"]},
+            )
+        else:
+            user_id = user["id"]
+            if not user["active"]:
+                return None
+            membership = db.execute(
+                "SELECT role FROM workspace_memberships WHERE workspace_id=? AND user_id=?",
+                (workspace["id"], user_id),
+            ).fetchone()
+            if not membership:
+                return None
+            # The configured local entry is a convenience account for opening
+            # the workspace, so it must retain the ordinary edit permission
+            # even when an older database created it as viewer/reviewer.
+            # Never grant it an administrative role automatically.
+            if membership["role"] in {"viewer", "reviewer"}:
+                db.execute(
+                    "UPDATE workspace_memberships SET role=? WHERE workspace_id=? AND user_id=?",
+                    ("researcher", workspace["id"], user_id),
+                )
+                _services().record_audit(
+                    db,
+                    "auth.local_auto_user_role_repaired",
+                    "user",
+                    user_id,
+                    {"workspace_id": workspace["id"], "role": "researcher"},
+                )
+            elif membership["role"] not in {"owner", "admin", "researcher"}:
+                return None
+        return _services().create_auth_session(db, user_id, workspace["id"])
+
+
 def _auth_workspace(db: sqlite3.Connection) -> sqlite3.Row:
     row = db.execute(
         "SELECT id,name FROM workspaces ORDER BY created_at,id LIMIT 1"
@@ -373,6 +476,27 @@ def _auth_workspace(db: sqlite3.Connection) -> sqlite3.Row:
     return db.execute(
         "SELECT id,name FROM workspaces WHERE id=?", (workspace_id,)
     ).fetchone()
+
+
+def _postgres_shared_workspace_mode() -> bool:
+    """Whether PostgreSQL is running with one shared workspace.
+
+    PostgreSQL currently has no row-level tenant policy in this application.
+    Keeping this check local to the control-plane helpers prevents a caller
+    from selecting an older or otherwise manually-created workspace and
+    accidentally treating it as an isolated tenant.
+    """
+    mode = _services().os.environ.get("LITLOOM_TENANT_MODE", "shared").strip().casefold()
+    return _services().using_postgres() and mode not in {
+        "isolated",
+        "tenant",
+        "per_workspace",
+    }
+
+
+def _canonical_auth_workspace(db: sqlite3.Connection) -> sqlite3.Row:
+    """Return the only supported workspace in PostgreSQL shared mode."""
+    return _services()._auth_workspace(db)
 
 
 def _bootstrap_token_path() -> Path:
@@ -406,16 +530,25 @@ def _mcp_service_actor(token: str) -> dict | None:
     ):
         return None
     username = _services().os.environ.get("LITLOOM_MCP_USERNAME", "").strip().casefold()
+    workspace_id = _services().os.environ.get("LITLOOM_MCP_WORKSPACE_ID", "").strip()
     if not username:
         return None
     with _services().DB_LOCK, _services().control_db_session() as db:
+        if _services()._postgres_shared_workspace_mode():
+            canonical = _services()._canonical_auth_workspace(db)
+            if workspace_id and workspace_id != canonical["id"]:
+                return None
+            workspace_id = canonical["id"]
+        workspace_clause = " AND w.id=?" if workspace_id else ""
+        workspace_args = (username, workspace_id) if workspace_id else (username,)
         row = db.execute(
-            """SELECT u.id AS user_id,u.username,u.display_name,u.active,
+            f"""SELECT u.id AS user_id,u.username,u.display_name,u.active,
                       w.id AS workspace_id,w.name AS workspace_name,m.role
                FROM users u JOIN workspace_memberships m ON m.user_id=u.id
                JOIN workspaces w ON w.id=m.workspace_id
-               WHERE u.username=? ORDER BY w.created_at,w.id LIMIT 1""",
-            (username,),
+               WHERE u.username=?{workspace_clause}
+               ORDER BY w.created_at,w.id LIMIT 1""",
+            workspace_args,
         ).fetchone()
     if not row or not row["active"]:
         return None
@@ -437,7 +570,7 @@ def _mcp_service_actor(token: str) -> dict | None:
 def _ensure_auth_bootstrap_token(db: sqlite3.Connection) -> None:
     if (
         not _services().team_auth_enabled()
-        or db.execute("SELECT 1 FROM users LIMIT 1").fetchone()
+        or _services()._auth_owner_exists(db)
     ):
         return
     token_row = db.execute(
@@ -461,11 +594,32 @@ def _ensure_auth_bootstrap_token(db: sqlite3.Connection) -> None:
     )
 
 
+def _auth_owner_exists(db: sqlite3.Connection) -> bool:
+    """Whether the canonical workspace has an active owner account."""
+    workspace = _services()._auth_workspace(db)
+    return bool(
+        db.execute(
+            """SELECT 1 FROM workspace_memberships m
+               JOIN users u ON u.id=m.user_id
+               WHERE m.workspace_id=? AND m.role='owner' AND u.active=1 LIMIT 1""",
+            (workspace["id"],),
+        ).fetchone()
+    )
+
+
 def create_auth_session(
     db: sqlite3.Connection, user_id: str, workspace_id: str = ""
 ) -> tuple[str, str, dict]:
-    workspace = None
-    if workspace_id:
+    if _services()._postgres_shared_workspace_mode():
+        canonical = _services()._canonical_auth_workspace(db)
+        if workspace_id and workspace_id != canonical["id"]:
+            raise PermissionError(
+                "当前 PostgreSQL 运行在共享工作区模式，不允许使用其他工作区"
+            )
+        workspace = canonical
+    else:
+        workspace = None
+    if workspace is None and workspace_id:
         workspace = db.execute(
             "SELECT id,name FROM workspaces WHERE id=?", (workspace_id,)
         ).fetchone()
@@ -492,10 +646,14 @@ def create_auth_session(
             ).isoformat(),
         ),
     )
-    stale = db.execute(
-        "SELECT token_hash FROM auth_sessions WHERE user_id=? ORDER BY created_at DESC LIMIT -1 OFFSET 10",
+    # Keep the query portable across SQLite and PostgreSQL. SQLite accepts
+    # ``LIMIT -1 OFFSET`` but PostgreSQL rejects it; slicing the small session
+    # list in Python is also clearer and avoids backend-specific SQL.
+    all_sessions = db.execute(
+        "SELECT token_hash FROM auth_sessions WHERE user_id=? ORDER BY created_at DESC",
         (user_id,),
     ).fetchall()
+    stale = all_sessions[10:]
     if stale:
         db.executemany(
             "DELETE FROM auth_sessions WHERE token_hash=?",
@@ -533,6 +691,15 @@ def resolve_auth_session(session_token: str) -> dict | None:
         ).fetchone()
         if not row:
             return None
+        if _services()._postgres_shared_workspace_mode():
+            canonical = _services()._canonical_auth_workspace(db)
+            if row["workspace_id"] != canonical["id"]:
+                # A session created before the shared-mode guard, or inserted
+                # manually, must never expose another workspace's data.
+                db.execute(
+                    "DELETE FROM auth_sessions WHERE token_hash=?", (row["token_hash"],)
+                )
+                return None
         created = _services().datetime.fromisoformat(row["created_at"])
         expires = _services().datetime.fromisoformat(row["expires_at"])
         if (
@@ -574,7 +741,7 @@ def auth_bootstrap_required() -> bool:
     if not _services().team_auth_enabled():
         return False
     with _services().DB_LOCK, _services().control_db_session() as db:
-        return db.execute("SELECT 1 FROM users LIMIT 1").fetchone() is None
+        return not _services()._auth_owner_exists(db)
 
 
 def bootstrap_team_owner(data: dict) -> tuple[str, str, dict]:
@@ -584,7 +751,7 @@ def bootstrap_team_owner(data: dict) -> tuple[str, str, dict]:
     password = _services().validate_password(data.get("password", ""))
     bootstrap_token = str(data.get("bootstrap_token") or "").strip()
     with _services().DB_LOCK, _services().control_db_session() as db:
-        if db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+        if _services()._auth_owner_exists(db):
             raise LookupError("管理员已经初始化，请改用登录")
         token_row = db.execute(
             "SELECT value FROM app_meta WHERE key='auth_bootstrap_token_sha256'"
@@ -717,6 +884,13 @@ def authenticate_user(
             "DELETE FROM auth_login_attempts WHERE identity_hash=?", (identity_hash,)
         )
         selected_workspace = _services().clean_text(workspace_id, 80)
+        if _services()._postgres_shared_workspace_mode():
+            canonical = _services()._canonical_auth_workspace(db)
+            if selected_workspace and selected_workspace != canonical["id"]:
+                raise PermissionError(
+                    "当前 PostgreSQL 运行在共享工作区模式，不允许选择其他工作区"
+                )
+            selected_workspace = canonical["id"]
         if selected_workspace:
             membership = db.execute(
                 "SELECT 1 FROM workspace_memberships WHERE workspace_id=? AND user_id=?",
@@ -770,9 +944,15 @@ def create_workspace_user(data: dict) -> dict:
 
 def list_user_workspaces(user_id: str) -> list[dict]:
     with _services().DB_LOCK, _services().control_db_session() as db:
+        workspace_filter = ""
+        args = [user_id]
+        if _services()._postgres_shared_workspace_mode():
+            canonical = _services()._canonical_auth_workspace(db)
+            workspace_filter = " AND w.id=?"
+            args.append(canonical["id"])
         rows = db.execute(
-            "SELECT w.id,w.name,w.created_at,m.role FROM workspaces w JOIN workspace_memberships m ON m.workspace_id=w.id WHERE m.user_id=? ORDER BY w.created_at,w.id",
-            (user_id,),
+            f"SELECT w.id,w.name,w.created_at,m.role FROM workspaces w JOIN workspace_memberships m ON m.workspace_id=w.id WHERE m.user_id=?{workspace_filter} ORDER BY w.created_at,w.id",
+            tuple(args),
         ).fetchall()
         return [dict(row) for row in rows]
 
@@ -780,6 +960,11 @@ def list_user_workspaces(user_id: str) -> list[dict]:
 def create_workspace(data: dict, actor: dict) -> dict:
     if actor.get("role") not in {"owner", "admin"}:
         raise PermissionError("只有工作区管理员可以创建工作区")
+    if _services().using_postgres() and not _services().tenant_isolation_enabled():
+        raise PermissionError(
+            "当前 PostgreSQL 运行在共享工作区模式，暂不支持创建第二个工作区；"
+            "请先完成 PostgreSQL 租户隔离后再启用多工作区"
+        )
     name = _services().clean_text(data.get("name", ""), 160)
     if len(name) < 2:
         raise ValueError("工作区名称至少需要 2 个字符")
@@ -815,6 +1000,10 @@ def switch_workspace(user_id: str, workspace_id: str) -> tuple[str, str, dict]:
     workspace_id = _services().clean_text(workspace_id, 80)
     if not workspace_id:
         raise ValueError("需要 workspace_id")
+    if _services().using_postgres() and not _services().tenant_isolation_enabled():
+        raise PermissionError(
+            "当前 PostgreSQL 运行在共享工作区模式，不允许切换到未隔离的其他工作区"
+        )
     with _services().DB_LOCK, _services().control_db_session() as db:
         membership = db.execute(
             "SELECT role FROM workspace_memberships WHERE workspace_id=? AND user_id=?",
@@ -952,6 +1141,7 @@ __all__ = [
     "_active_database_path",
     "postgres_database_url",
     "using_postgres",
+    "sqlite_test_backend_enabled",
     "database_table_exists",
     "database_integrity_check",
     "connect",
@@ -959,11 +1149,16 @@ __all__ = [
     "control_db_session",
     "record_audit",
     "team_auth_enabled",
+    "local_auto_login_enabled",
+    "create_local_auto_login_session",
+    "_postgres_shared_workspace_mode",
+    "_canonical_auth_workspace",
     "_auth_workspace",
     "_bootstrap_token_path",
     "_mcp_service_token",
     "_mcp_service_actor",
     "_ensure_auth_bootstrap_token",
+    "_auth_owner_exists",
     "create_auth_session",
     "resolve_auth_session",
     "auth_bootstrap_required",

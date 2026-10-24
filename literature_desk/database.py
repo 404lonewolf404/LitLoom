@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+from pathlib import Path
+
 from .services import app_services as _services
 
 
@@ -10,6 +14,10 @@ def init_db() -> None:
     if _services().using_postgres():
         _initialize_postgres_db()
         return
+    if not _services().sqlite_test_backend_enabled():
+        raise RuntimeError(
+            "SQLite 初始化仅允许测试环境；请配置 LITLOOM_DATABASE_URL 指向 PostgreSQL。"
+        )
     with _services().DB_LOCK, _services().db_session() as db:
         db.executescript(
             """
@@ -551,6 +559,31 @@ def init_db() -> None:
             enabled INTEGER NOT NULL DEFAULT 0,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS user_model_configs (
+            scope_key TEXT PRIMARY KEY,
+            workspace_id TEXT NOT NULL DEFAULT '',
+            user_id TEXT NOT NULL DEFAULT '',
+            provider TEXT NOT NULL DEFAULT '',
+            base_url TEXT NOT NULL DEFAULT '',
+            website_url TEXT NOT NULL DEFAULT '',
+            api_url TEXT NOT NULL DEFAULT '',
+            protocol TEXT NOT NULL DEFAULT 'chat_completions',
+            model TEXT NOT NULL DEFAULT 'gpt-4.1-mini',
+            fast_model TEXT NOT NULL DEFAULT '',
+            analysis_model TEXT NOT NULL DEFAULT '',
+            vision_model TEXT NOT NULL DEFAULT '',
+            embedding_model TEXT NOT NULL DEFAULT '',
+            embedding_api_url TEXT NOT NULL DEFAULT '',
+            deepseek_search_enabled INTEGER NOT NULL DEFAULT 0,
+            deepseek_search_api_url TEXT NOT NULL DEFAULT '',
+            deepseek_fetch_api_url TEXT NOT NULL DEFAULT '',
+            temperature REAL NOT NULL DEFAULT 0.2,
+            enabled INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            UNIQUE(workspace_id,user_id)
+        );
+        CREATE INDEX IF NOT EXISTS user_model_configs_workspace_idx
+            ON user_model_configs(workspace_id,user_id);
         CREATE TABLE IF NOT EXISTS model_usage_daily (
             day_utc TEXT NOT NULL,
             task TEXT NOT NULL,
@@ -1090,7 +1123,10 @@ def init_db() -> None:
                 "INSERT INTO paper_page_search_content(page_id,paper_id,text) VALUES(?,?,?)",
                 (page_row["id"], page_row["paper_id"], page_row["text"] or ""),
             )
-        if current_schema < _services().DB_SCHEMA_VERSION:
+        prereading_backfill = db.execute(
+            "SELECT value FROM app_meta WHERE key='prereading_items_v2'"
+        ).fetchone()
+        if current_schema < _services().DB_SCHEMA_VERSION or not prereading_backfill:
             for artifact in db.execute(
                 """SELECT a.id,a.paper_id,a.answer FROM ai_artifacts a
                    WHERE a.artifact_type IN ('reading_card_draft','deep_read','prereading_guide')
@@ -1122,6 +1158,10 @@ def init_db() -> None:
                 "UPDATE app_meta SET value=? WHERE key='schema_version'",
                 (str(_services().DB_SCHEMA_VERSION),),
             )
+            db.execute(
+                "INSERT INTO app_meta(key,value) VALUES('prereading_items_v2','1') "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+            )
         # Rehydrate the in-memory circuit after every startup or verified
         # backup restore.  This prevents a just-rate-limited index from being
         # hammered again merely because the local service was restarted.
@@ -1140,29 +1180,67 @@ def init_db() -> None:
 
 
 def _initialize_postgres_db() -> None:
-    """Migrate an existing SQLite library once, then reconcile durable jobs."""
+    """Ensure the PostgreSQL schema without importing any legacy SQLite data."""
     database_url = _services().postgres_database_url()
     with _services().postgres_connect(database_url) as probe:
         table = _services().postgres_table_exists(probe, "app_meta")
     if not table:
-        if _services().DB_PATH.is_file():
-            source = _services().DB_PATH
-        else:
-            # A clean first run still uses the canonical SQLite schema builder
-            # as an import format, then immediately converts it to PostgreSQL.
-            source = _services().DATA_DIR / "postgres-bootstrap.sqlite3"
+        with _services().postgres_connect(database_url) as probe:
+            existing = probe.execute(
+                "SELECT count(*) AS count FROM information_schema.tables "
+                "WHERE table_schema=current_schema() AND table_type='BASE TABLE'"
+            ).fetchone()["count"]
+        if existing:
+            raise RuntimeError(
+                "PostgreSQL 目标库已有数据表但缺少 LitLoom schema 标记；"
+                "为避免覆盖数据，已停止初始化。"
+            )
+
+        # Build only the initial DDL in a disposable system-temp directory.
+        # Existing SQLite files are neither read nor migrated during startup.
+        with tempfile.TemporaryDirectory(prefix="litloom-postgres-bootstrap-") as temp_dir:
+            source = Path(temp_dir) / "schema-bootstrap.sqlite3"
             previous_path = _services().DB_PATH
-            previous_url = _services().os.environ.pop("LITLOOM_DATABASE_URL")
+            previous_data_dir = _services().DATA_DIR
+            previous_url = _services().os.environ.pop("LITLOOM_DATABASE_URL", None)
+            previous_testing = _services().os.environ.get("LITLOOM_TESTING")
+            previous_auth_mode = _services().os.environ.get("LITLOOM_AUTH_MODE")
             try:
+                _services().os.environ["LITLOOM_TESTING"] = "1"
+                _services().os.environ["LITLOOM_AUTH_MODE"] = "single"
                 _services().DB_PATH = source
+                _services().DATA_DIR = Path(temp_dir) / "data"
+                _services().DATA_DIR.mkdir(parents=True, exist_ok=True)
                 _services().init_db()
+                _services().os.environ["LITLOOM_DATABASE_URL"] = database_url
+                result = _services().postgres_migrate_source(source, database_url)
             finally:
                 _services().DB_PATH = previous_path
-                _services().os.environ["LITLOOM_DATABASE_URL"] = previous_url
-        result = _services().postgres_migrate_source(source, database_url)
+                _services().DATA_DIR = previous_data_dir
+                if previous_url is None:
+                    _services().os.environ.pop("LITLOOM_DATABASE_URL", None)
+                else:
+                    _services().os.environ["LITLOOM_DATABASE_URL"] = previous_url
+                if previous_testing is None:
+                    _services().os.environ.pop("LITLOOM_TESTING", None)
+                else:
+                    _services().os.environ["LITLOOM_TESTING"] = previous_testing
+                if previous_auth_mode is None:
+                    _services().os.environ.pop("LITLOOM_AUTH_MODE", None)
+                else:
+                    _services().os.environ["LITLOOM_AUTH_MODE"] = previous_auth_mode
         _services().POSTGRES_MIGRATION_RESULT = result
 
     _services().postgres_apply_migrations(database_url)
+
+    # The SQLite bootstrap path creates the initial workspace and one-time
+    # administrator token as part of schema initialization. PostgreSQL uses a
+    # separate migration path, so repeat those control-plane invariants here;
+    # otherwise enabling team auth on a clean PostgreSQL database would show a
+    # token path in the UI but never create the token file.
+    with _services().DB_LOCK, _services().db_session() as db:
+        _services()._auth_workspace(db)
+        _services()._ensure_auth_bootstrap_token(db)
 
     interrupted_at = _services().now_iso()
     with _services().DB_LOCK, _services().db_session() as db:
